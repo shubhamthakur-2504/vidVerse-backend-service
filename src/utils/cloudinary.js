@@ -1,7 +1,11 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from 'fs'
+import dotenv from "dotenv";
 
 // Configuration
+dotenv.config({
+    path:"./.env"
+});
 cloudinary.config({ 
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
     api_key: process.env.CLOUDINARY_API_KEY, 
@@ -10,19 +14,38 @@ cloudinary.config({
 
 const uploadOnCloudinary = async function (localFilePath) {
     try {
-        if(!localFilePath) return null
+        if(!localFilePath){
+            console.log("File not found");  //to be removed after adding logs logger
+            return null
+            
+        }
         const res = await cloudinary.uploader.upload(
             localFilePath,{
                 resource_type:'auto'
             }
         ) 
-        console.log("File uploaded on Cloudinary. File Src : "+ res.url);
+        console.log("File uploaded on Cloudinary. File Src : "+ res.url); //to be removed after adding logs logger
         fs.unlinkSync(localFilePath)
         return res
     } catch (error) {
+        console.log("Cloudinary upload error::", error); //to be removed after adding logs logger
         fs.unlinkSync(localFilePath)
         return null
     }
 }
 
-export {uploadOnCloudinary}
+const deleteFromCloudinary = async function (publicId) {
+    try{
+        if(!publicId){
+            console.log("File not found"); //to be removed after adding logs logger
+            return null
+        }
+        const res = await cloudinary.uploader.destroy(publicId)
+        console.log("File deleted from Cloudinary. File Src : "+ res.url); //to be removed after adding logs logger
+        return res
+    }catch(error){
+        console.log("Cloudinary delete error::", error); //to be removed after adding logs logger
+    }
+}
+
+export {uploadOnCloudinary, deleteFromCloudinary}

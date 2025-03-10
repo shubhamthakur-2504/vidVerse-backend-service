@@ -10,6 +10,12 @@ function validateEmail(email) {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
 }
+const extractPublicId = (url) => {
+    const parts = url.split('/');
+    const publicIdWithExtension = parts[parts.length - 1];
+    const publicId = publicIdWithExtension.split('.')[0]; // Remove the file extension
+    return publicId;
+}
 
 //generate refresh and access token
 const  generateRefreshAndAccessToken = async (userId) => {
@@ -192,4 +198,120 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
     }
 })
 
-export { registerUser, login, refreshAccessToken, logout }
+
+// change current password
+const changeCurrentPassword = asyncHandler(async (req,res) => {
+    const user = await User.findById(req.user._id)
+    const {currentPassword,newPassword} = req.body
+    if(!user){
+        throw new apiError(404,"User not found")
+    }
+    if(!await user.isPasswordCorrect(currentPassword)){
+        throw new apiError(401,"Invalid current password")
+    }
+    if(currentPassword === newPassword){
+        throw new apiError(409,"New password cannot be same as current password")
+    }
+    if(!newPassword){
+        throw new apiError(400,"New password is required")
+    }
+    user.password = newPassword
+    await user.save({validateBeforeSave:false})
+    return res.status(200).json(new apiResponse(200,"Password changed successfully"))
+})
+
+
+// change avatar
+const changeAvatar = asyncHandler(async (req,res) => {
+    const user = await User.findById(req.user._id)
+    const avatarLocal = req.files?.avatar?.[0]?.path
+    if(!user){
+        throw new apiError(404,"User not found")
+    }
+    if(!avatarLocal){
+        throw new apiError(400,"Avatar is required")
+    }
+    const avatar = await uploadOnCloudinary(avatarLocal)
+    if(!avatar){
+        throw new apiError(500,"something went wrong while uploading")
+    }
+    const publicId = extractPublicId(user.avatarUrl)
+    await deleteFromCloudinary(publicId)
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set:{
+                avatar:avatar
+            }
+        },{
+            new:true , select:"-password -refreshToken"
+        }
+    )
+    return res.status(200).json(new apiResponse(200,{updatedUser},"Avatar changed successfully"))
+})
+
+// change cover
+const changeCover = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id)
+    const coverLocal  = req.files?.cover?.[0]?.path
+    if(!user){
+        throw new apiError(404,"User not found")
+    }
+    if(!coverLocal){
+        throw new apiError(400,"Cover is required")
+    }
+    const cover = await uploadOnCloudinary(coverLocal)
+    if(!cover){
+        throw new apiError(500,"something went wrong while uploading")
+    }
+    const publicId = extractPublicId(user.coverImageUrl)
+    await deleteFromCloudinary(publicId)
+    const updatedUser = await User.findOneAndUpdate(req.user._id,{
+        $set:{
+            cover:cover
+        },
+    },{
+        new:true, select: '-password -refreshToken'
+    })
+    return res.status(200).json(new apiResponse(200,{updatedUser},"Cover changed successfully"))
+})
+
+
+// change Account details
+const updateAccountDetails = asyncHandler(async (req, res) =>{
+    const user = await User.findById(req.user._id)
+    const newUserName = req.body.userName
+    const newFullName = req.body.fullName
+    if(!user){
+        throw new apiError(404,"User not found")
+    }
+    if(!newFullName && !newUserName){
+        throw new apiError(400,"New fullname or New username is requrire to change")
+    }
+    if((newFullName && newFullName === user?.fullName )|| (newUserName && newUserName === user?.userName)){
+        throw new apiError(409,"New username or fullname can't be same as current")
+    }
+    if (newUserName) {
+        const existedUser = await User.findOne({userName:newUserName})
+        if(existedUser){
+            throw new apiError(409,"User with this username already exists")
+        }
+    }
+    const update = {}
+    if (newFullName) update.fullName = newFullName
+    if (newUserName) update.userName = newUserName
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        {$set:update},
+        { new: true, runValidators: true, context: 'query', select: 'userName fullName'}
+    )
+    return res.status(200).json(new apiResponse(200,{ userName: updatedUser.userName, fullName: updatedUser.fullName },"User Details Updated Successfully"))
+})
+
+
+// get current user
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res.status(200).json(new apiResponse(200,req.user,"Current User Details"))
+})
+
+export { registerUser, login, refreshAccessToken, logout, changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails, getCurrentUser }

@@ -5,6 +5,7 @@ import { login } from "../controllers/userRegister.controllers.js"
 import { logout } from "../controllers/userRegister.controllers.js";
 import {verifyJwtToken as auth} from "../middleWares/auth.middleWare.js"
 import { refreshAccessToken } from "../controllers/userRegister.controllers.js";
+import { changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails } from "../controllers/userRegister.controllers.js"
 
 const router = Router()
 
@@ -14,15 +15,17 @@ router.route("/register").post(upload.fields([
 ]),userRegister)
 
 router.route("/login").post(async (req,res,next) => {
-    await login(req,res,next)
-    console.log(req.body);
-    
+    await login(req,res,next) 
 })
 
 router.route("/refreshaccess").post(refreshAccessToken)
 
 //secure routes
 router.route("/logout").post(auth,logout)
+router.route("/changepassword").post(auth,changeCurrentPassword)
+router.route("/changeavatar").post( auth, upload.fields([{name:"avatar", maxCount:1}]),changeAvatar)
+router.route("/changecover").post(auth, upload.fields([{name:"cover", maxCount:1}]),changeCover)
+router.route("/updatedetails").post(auth,updateAccountDetails)
 
 
 export default router

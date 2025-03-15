@@ -5,7 +5,8 @@ import { login } from "../controllers/userRegister.controllers.js"
 import { logout } from "../controllers/userRegister.controllers.js";
 import {verifyJwtToken as auth} from "../middleWares/auth.middleWare.js"
 import { refreshAccessToken } from "../controllers/userRegister.controllers.js";
-import { changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails } from "../controllers/userRegister.controllers.js"
+import { changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails, getCurrentUser } from "../controllers/userRegister.controllers.js"
+import { getWatchHistory, getUserChannelDetails } from "../controllers/userDetails.controllers.js";
 
 const router = Router()
 
@@ -26,6 +27,10 @@ router.route("/changepassword").post(auth,changeCurrentPassword)
 router.route("/changeavatar").post( auth, upload.fields([{name:"avatar", maxCount:1}]),changeAvatar)
 router.route("/changecover").post(auth, upload.fields([{name:"cover", maxCount:1}]),changeCover)
 router.route("/updatedetails").post(auth,updateAccountDetails)
+router.route("/getcurrentuser").get(auth,getCurrentUser)
+
+router.route("/getwatchhistory").get(auth,getWatchHistory)
+router.route("/getuserdetails").get(auth,getUserChannelDetails)
 
 
 export default router

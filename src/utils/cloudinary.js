@@ -19,9 +19,20 @@ const uploadOnCloudinary = async function (localFilePath) {
             return null
             
         }
+
+        let folder = '';
+        if (fileType === 'avatar') {
+            folder = 'avatars';
+        } else if (fileType === 'cover') {
+            folder = 'covers';
+        } else if (fileType === 'video') {
+            folder = 'videos';
+        }
+
         const res = await cloudinary.uploader.upload(
             localFilePath,{
-                resource_type:'auto'
+                resource_type:'auto',
+                folder:folder
             }
         ) 
         console.log("File uploaded on Cloudinary. File Src : "+ res.url); //to be removed after adding logs logger

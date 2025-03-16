@@ -12,14 +12,14 @@ cloudinary.config({
     api_secret:process.env.CLOUDINARY_API_SECRET
 });
 
-const uploadOnCloudinary = async function (localFilePath) {
+const uploadOnCloudinary = async function (localFilePath, fileType) {
     try {
         if(!localFilePath){
             console.log("File not found");  //to be removed after adding logs logger
             return null
             
         }
-
+        let resourceType = 'auto';
         let folder = '';
         if (fileType === 'avatar') {
             folder = 'avatars';
@@ -27,16 +27,25 @@ const uploadOnCloudinary = async function (localFilePath) {
             folder = 'covers';
         } else if (fileType === 'video') {
             folder = 'videos';
+            resourceType = 'video';
+        } else if(fileType === 'thumbnail'){
+            folder = 'thumbnails'
         }
 
         const res = await cloudinary.uploader.upload(
             localFilePath,{
-                resource_type:'auto',
+                resource_type:resourceType,
                 folder:folder
             }
         ) 
+        
         console.log("File uploaded on Cloudinary. File Src : "+ res.url); //to be removed after adding logs logger
-        fs.unlinkSync(localFilePath)
+        try {
+            fs.unlinkSync(localFilePath);
+        } catch (err) {
+            console.error("Error deleting local file:", err); //to be removed after adding logs logger
+        }
+        
         return res
     } catch (error) {
         console.log("Cloudinary upload error::", error); //to be removed after adding logs logger
@@ -45,15 +54,26 @@ const uploadOnCloudinary = async function (localFilePath) {
     }
 }
 
-const deleteFromCloudinary = async function (publicId) {
+const deleteFromCloudinary = async function (publicId,fileType = 'image') {
     try{
         if(!publicId){
             console.log("File not found"); //to be removed after adding logs logger
             return null
         }
-        const res = await cloudinary.uploader.destroy(publicId)
-        console.log("File deleted from Cloudinary. File Src : "+ res.result); //to be removed after adding logs logger
-        return res
+        
+        let deleteResponse;
+        if (fileType === 'video') {
+            deleteResponse = await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+        } else {
+            deleteResponse = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+        }
+
+        if (deleteResponse.result === "ok") {
+            console.log("File deleted from Cloudinary. File Src : " + publicId); // to be removed after adding logs logger
+        } else {
+            console.log("Failed to delete file from Cloudinary. File Src : " + publicId); //to be removed after adding logs logger
+        } 
+        return deleteResponse
     }catch(error){
         console.log("Cloudinary delete error::", error); //to be removed after adding logs logger
     }

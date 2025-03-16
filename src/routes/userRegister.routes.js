@@ -23,12 +23,12 @@ router.route("/refreshaccess").post(refreshAccessToken)
 
 //secure routes
 router.route("/logout").post(auth,logout)
-router.route("/changepassword").post(auth,changeCurrentPassword)
-router.route("/changeavatar").post( auth, upload.fields([{name:"avatar", maxCount:1}]),changeAvatar)
-router.route("/changecover").post(auth, upload.fields([{name:"cover", maxCount:1}]),changeCover)
-router.route("/updatedetails").post(auth,updateAccountDetails)
-router.route("/getcurrentuser").get(auth,getCurrentUser)
+router.route("/changepassword").patch(auth,changeCurrentPassword)
+router.route("/changeavatar").patch( auth, upload.fields([{name:"avatar", maxCount:1}]),changeAvatar)
+router.route("/changecover").patch(auth, upload.fields([{name:"cover", maxCount:1}]),changeCover)
+router.route("/updatedetails").patch(auth,updateAccountDetails)
 
+router.route("/getcurrentuser").get(auth,getCurrentUser)
 router.route("/getwatchhistory").get(auth,getWatchHistory)
 router.route("/getuserdetails").get(auth,getUserChannelDetails)
 

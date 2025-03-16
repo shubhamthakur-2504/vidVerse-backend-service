@@ -2,7 +2,9 @@ import { apiResponse } from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import {apiError} from "../utils/apiError.js";
 import {User} from "../models/user.model.js"
+import { getCreatedAtDiffField, formatRelativeTime } from "../utils/utils.js";
 import mongoose from "mongoose";
+
 
 const getUserChannelDetails = asyncHandler(async (req, res) => {
     
@@ -66,6 +68,11 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                 as: "watchHistory",
                 pipeline: [
                     {
+                        $match:{
+                            isPublished:true
+                        }
+                    },
+                    {
                         $lookup:{
                             from:"User",
                             localField:"owner",
@@ -76,42 +83,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                     {
                         $unwind:"$owner"
                     },
-                    {
-                        $addFields:{
-                            createdAtDiff:{
-                                $let:{
-                                    vars:{
-                                        dayDiff:{
-                                            $dateDiff:{
-                                                startDate:"$createdAt",
-                                                endDate:new Date(),
-                                                unit:"day"
-                                            }
-                                        },
-                                        monthDiff:{
-                                            $dateDiff:{
-                                                startDate:"$createdAt",
-                                                endDate:new Date(),
-                                                unit:"month"
-                                            }
-                                        },
-                                        yearDiff:{
-                                            $dateDiff:{
-                                                startDate:"$createdAt",
-                                                endDate:new Date(),
-                                                unit:"year"
-                                            }
-                                        }
-                                    },
-                                    in:{
-                                        days:"$$dayDiff",
-                                        months:"$$monthDiff",
-                                        years:"$$yearDiff"
-                                    }
-                                }
-                            }
-                        }
-                    },
+                    getCreatedAtDiffField(),
                     {
                         $project:{
                             videoFileUrl:1,
@@ -141,21 +113,8 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 
     watchHistory.forEach( video =>{
         video.watchHistory.forEach( videoDetail => {
-            const { days, months, years } = videoDetail.createdAtDiff
-            
-            let relativeTime = ''
 
-            if (years > 0){
-                relativeTime = `${years} year${years > 1 ? 's' : ''} ago`
-            } else if (months > 0){
-                relativeTime = `${months} month${months > 1 ? 's' : ''} ago`
-            } else if (days > 0){
-                relativeTime = `${days} days${days > 1 ? 's' : ''} ago`
-            } else {
-                relativeTime = 'Today'
-            }
-
-            videoDetail.relativeTime = relativeTime
+            videoDetail.relativeTime = formatRelativeTime(videoDetail.createdAtDiff)
 
             delete videoDetail.createdAtDiff
         })

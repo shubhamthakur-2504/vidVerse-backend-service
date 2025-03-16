@@ -73,8 +73,8 @@ const registerUser = asyncHandler(async (req, res) => {
     } 
     
     // upload on cloudinary
-    const avatar = await uploadOnCloudinary(avatarLocal)
-    const cover = await uploadOnCloudinary(coverLocal)
+    const avatar = await uploadOnCloudinary(avatarLocal,"avatar")
+    const cover = await uploadOnCloudinary(coverLocal,"cover")
     
 
     // create user
@@ -231,7 +231,7 @@ const changeAvatar = asyncHandler(async (req,res) => {
     if(!avatarLocal){
         throw new apiError(400,"Avatar is required")
     }
-    const avatar = await uploadOnCloudinary(avatarLocal)
+    const avatar = await uploadOnCloudinary(avatarLocal,"avatar")
     if(!avatar){
         throw new apiError(500,"something went wrong while uploading")
     }
@@ -260,7 +260,7 @@ const changeCover = asyncHandler(async (req, res) => {
     if(!coverLocal){
         throw new apiError(400,"Cover is required")
     }
-    const cover = await uploadOnCloudinary(coverLocal)
+    const cover = await uploadOnCloudinary(coverLocal,"cover")
     if(!cover){
         throw new apiError(500,"something went wrong while uploading")
     }

@@ -6,8 +6,9 @@ const commentSchema = new Schema({
         type:String,
         required:true
     },
-    imageUrl:{
-        type:String
+    edited:{
+        type:Boolean,
+        default:false
     },
     videoId:{
         type:Schema.Types.ObjectId,

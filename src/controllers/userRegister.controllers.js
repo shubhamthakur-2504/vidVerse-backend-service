@@ -3,18 +3,13 @@ import asyncHandler from "../utils/asyncHandler.js";
 import {apiError} from "../utils/apiError.js";
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
+import { extractPublicId } from "../utils/utils.js";
 import JWT from "jsonwebtoken"
 
 // common function
 function validateEmail(email) {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
-}
-const extractPublicId = (url) => {
-    const parts = url.split('/');
-    const publicIdWithExtension = parts[parts.length - 1];
-    const publicId = publicIdWithExtension.split('.')[0]; // Remove the file extension
-    return publicId;
 }
 
 //generate refresh and access token

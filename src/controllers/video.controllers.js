@@ -2,14 +2,14 @@ import asyncHandler from "../utils/asyncHandler.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { apiError } from "../utils/apiError.js";
 import { Video } from "../models/video.model.js";
-import { getCreatedAtDiffField, formatRelativeTime } from "../utils/utils.js";
+import { getCreatedAtDiffField, formatRelativeTime, extractPublicId } from "../utils/utils.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
-import Ffmpeg  from "fluent-ffmpeg";
-import ffprobe from "fluent-ffmpeg";
-import ffprobeStatic from "ffprobe-static";
-import ffmegStatic from "ffmpeg-static";
 import path from "path";
 import mongoose from "mongoose";
+import Ffmpeg  from "fluent-ffmpeg";
+import ffprobeStatic from "ffprobe-static";
+import ffmegStatic from "ffmpeg-static";
+import ffprobe from "fluent-ffmpeg";
 import { Session } from "inspector/promises";
 import { User } from "../models/user.model.js";
 
@@ -22,8 +22,8 @@ Ffmpeg.setFfprobePath(ffprobeStatic.path)
 const extractThumbnail = async (videoLocal, fileName) => {
     return new Promise( (resolve, reject) => {
 
-        const thumbnailName = `thumbnail-${fileName}`
-        const thumbnailLocal = path.join('./public/temps', thumbnailName)
+        const thumbnailName = `thumbnail-${fileName}.jpg`
+        const thumbnailLocal = path.resolve('./public/temps', thumbnailName)
 
         Ffmpeg(videoLocal).on('end', () => {
             console.log("Thumbnail extracted"); //to be removed after adding logs logger
@@ -35,8 +35,9 @@ const extractThumbnail = async (videoLocal, fileName) => {
             count: 1,
             folder: './public/temps',
             filename: thumbnailName,
+            
             size: '320x240',
-            timemarks: [5]
+            timemarks: ["5"]
         })
     })
 }
@@ -55,12 +56,7 @@ const extractDuration = async (videoLocal) => {
     })
 }
 
-const extractPublicId = (url) => {
-    const parts = url.split('/');
-    const publicIdWithExtension = parts.slice(-2).join('/');
-    const publicId = publicIdWithExtension.split('.')[0]; // Remove the file extension
-    return publicId;
-}
+
 
 
 
@@ -128,7 +124,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
         console.log("error while creating video",error);
         // await session.abortTransaction() //cluster mode
         if (videoUrl?.public_id) await deleteFromCloudinary(videoUrl?.public_id,"video")
-        if (thumbnailUrl?.public_id) await deleteFromCloudinary(thumbnailUrl?.public_id,"video")
+        if (thumbnailUrl?.public_id) await deleteFromCloudinary(thumbnailUrl?.public_id)
         throw new apiError(500,"Something went wrong while uploading video and thumbnail were deleted")
     }finally{ 
         // await session.endSession() //cluster mode
@@ -156,7 +152,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
     try {
         await deleteFromCloudinary(videoPublicId,"video")
-        await deleteFromCloudinary(thumbnailPublicId,"video")
+        await deleteFromCloudinary(thumbnailPublicId)
     
         await Video.findByIdAndDelete(videoId) //in cluster mode pass session as second argument in object
 
@@ -280,7 +276,7 @@ const getVideoDetails = asyncHandler(async (req, res) => {
     
         videoDetails[0].relativeTime = formatRelativeTime(videoDetails[0].createdAtDiff)
         delete videoDetails[0].createdAtDiff
-        console.log(videoDetails);
+        
         
     
         return res.status(200).json(new apiResponse(200,videoDetails[0],"Video details fetched successfully"))
@@ -288,8 +284,73 @@ const getVideoDetails = asyncHandler(async (req, res) => {
         console.log(error);
         throw new apiError(404,"Video not found")
     }
-
-   
 })
 
-export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails}
+const toggleIsPublished = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    const video = await Video.findById(videoId)
+    if(!video){
+        throw new apiError(404,"Video not found")
+    }
+    if(!video.owner.equals(req.user._id)){
+        throw new apiError(401,"Unauthorized")
+    }
+    video.isPublished = !video.isPublished
+    await video.save({validateBeforeSave:false})
+    return res.status(200).json(new apiResponse(200,video,"Video status toggled successfully"))
+})
+
+
+const updateVideoDetails = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    const {title, description} = req.body
+    const thumbnailLocal = req.files?.thumbnail?.[0]?.path
+    const videoToUpdate = await Video.findById(videoId)
+
+
+    if(!videoToUpdate){
+        throw  new apiError(404, "Video not found")
+    }
+    if(!videoToUpdate.owner.equals(req.user._id)){
+        throw new apiError(401, "Unauthorized")
+    }
+    
+    const oldThumbnail = videoToUpdate.thumbnailUrl
+
+    try {
+        if(thumbnailLocal){ 
+            const thumbnail = await uploadOnCloudinary(thumbnailLocal,"thumbnail")
+            if(!thumbnail){
+                throw new apiError(500,"Something went wrong while uploading thumbnail")
+            }
+            try {
+                const thumbnailPublicIdOld = extractPublicId(oldThumbnail)
+                videoToUpdate.thumbnailUrl = thumbnail
+                if(videoToUpdate.thumbnailUrl !== oldThumbnail){
+                    await deleteFromCloudinary(thumbnailPublicIdOld)
+                }
+            } catch (error) {
+                videoToUpdate.thumbnailUrl = oldThumbnail
+                await deleteFromCloudinary(thumbnail.public_id)
+                console.log("error in updateVideoDetails:video controller:: error ",error);
+                throw new apiError(500,"Something went wrong while updating thumbnail")
+            }
+        }
+    
+    } catch (error) {
+        throw new apiError(500,"Something went wrong while updating video details")
+    }
+    if(title){
+        videoToUpdate.title=title 
+    }
+    if(description){
+        videoToUpdate.description = description
+    }
+    await videoToUpdate.save({validateBeforeSave:false})
+
+    const updatedVideo = await Video.findById(videoId).select("videoFileUrl thumbnailUrl title description ")
+
+    res.status(200).json(new apiResponse(200,updatedVideo,"Video Details Updated Successfully"))
+})
+
+export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails, updateVideoDetails, toggleIsPublished}

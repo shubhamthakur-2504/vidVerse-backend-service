@@ -53,5 +53,12 @@ const formatRelativeTime = (createdAtDiff) => {
     }
 };
 
+const extractPublicId = (url) => {
+    const parts = url.split('/');
+    const publicIdWithExtension = parts.slice(-2).join('/');
+    const publicId = publicIdWithExtension.split('.')[0]; // Remove the file extension
+    return publicId;
+}
 
-export { getCreatedAtDiffField, formatRelativeTime };
+
+export { getCreatedAtDiffField, formatRelativeTime, extractPublicId };

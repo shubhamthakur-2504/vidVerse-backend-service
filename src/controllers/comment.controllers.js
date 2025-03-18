@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-import asyncHandler from "../utils/asyncHandler";
-import { apiError } from "../utils/apiError";
-import { apiResponse } from "../utils/apiResponse";
-import { Video } from "../models/video.model";
-import { Tweet } from "../models/tweet.model";
-import { Comment } from "../models/comment.model";
-
+import asyncHandler from "../utils/asyncHandler.js";
+import { apiError } from "../utils/apiError.js";
+import { apiResponse } from "../utils/apiResponse.js";
+import { Video } from "../models/video.model.js";
+import { Tweet } from "../models/tweet.model.js";
+import { Comment } from "../models/comment.model.js";
+import { getCreatedAtDiffField, formatRelativeTime, isEdited } from "../utils/utils.js";
 // common functions
 const getModel= (type) => {
     if (type === 'video') {
@@ -45,6 +45,8 @@ const createComment = asyncHandler(async (req, res) => {
             comment.tweetId = id
         }
         if((comment.videoId.equals(id)) || (comment.tweetId.equals(id))){
+            await comment.save({validateBeforeSave:false})
+            comment.editStatus = isEdited(comment.createdAt,comment.updatedAt)
             res.status(200).json(new apiResponse(200,comment,"Comment created successfull"))
         }else{
             await Comment.findByIdAndDelete(comment._id)
@@ -80,7 +82,10 @@ const getAllComments = asyncHandler(async (req, res) => {
     const type = req.type
     const id =  mongoose.Types.ObjectId.createFromHexString(req.params.id)
     const model = getModel(type)
+    const key = type === "video" ? "videoId" : "tweetId"
+    
     const instance = await model.findById(id)
+    
     if(!instance){
         throw new apiError(404,`${type == "video" ? "Video" : "Tweet"} not found`)
     }
@@ -88,7 +93,7 @@ const getAllComments = asyncHandler(async (req, res) => {
         const allComment = await Comment.aggregate([
             {
                 $match:{
-                    [type === "video" ? "videoId" : "tweetId"]:id
+                    [key]:id
                 }
             },
             {
@@ -100,27 +105,46 @@ const getAllComments = asyncHandler(async (req, res) => {
                 }
             },
             {
-                $unwind:"$userDetails"
+                $unwind:{
+                    path:"$userDetails",
+                    preserveNullAndEmptyArrays:true
+                }
+                
             },
+            getCreatedAtDiffField(),
             {
                 $project:{
                     content:1,
+                    createdAtDiff:1,
+                    createdAt:1,
+                    updatedAt:1,
                     "userDetails.userName":1,
                     "userDetails.avatarUrl":1
                 }
             }
         ])
         if(allComment.length === 0){
-            res.status(200).json(new apiResponse(200,allComment,"No comments fpund"))
+            res.status(200).json(new apiResponse(200,allComment,"No comments found"))
         }
-        res.status(200).json(new apiResponse(200,allComment,"Comment fetched successfully"))
+
+        const formatedComment = allComment.map(comment => {
+            comment.editStatus = isEdited(comment.createdAt,comment.updatedAt)
+            comment.relativeTime = formatRelativeTime(comment.createdAtDiff)
+            delete comment.createdAtDiff
+            delete comment.updatedAt
+            delete comment.createdAt
+            return comment
+        })
+
+        res.status(200).json(new apiResponse(200,formatedComment,"Comment fetched successfully"))
+        
     } catch (error) {
         throw new apiError(500,"Something went wrong while fetching comments")
     }
 })
 
 const editComment = asyncHandler(async (req, res) => {
-    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.commentId)
+    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
     const {content} = req.body
 
     if(!content?.trim()){
@@ -136,7 +160,6 @@ const editComment = asyncHandler(async (req, res) => {
     }
     try {
         comment.content = content
-        comment.edited = true
         await comment.save({validateBeforeSave:false})
         res.status(200).json(new apiResponse(200,comment,"Comment edited successfully"))
     } catch (error) {
@@ -146,7 +169,7 @@ const editComment = asyncHandler(async (req, res) => {
 })
 
 const createrCommentDelete = asyncHandler(async (req, res) => {
-    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.commentId)
+    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
     const type = req.type
     const model = getModel(type)
     const comment = await Comment.findById(commentId)

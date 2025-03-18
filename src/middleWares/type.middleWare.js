@@ -1,5 +1,5 @@
-import { apiError } from "../utils/apiError";
-import asyncHandler from "../utils/asyncHandler";
+import { apiError } from "../utils/apiError.js";
+import asyncHandler from "../utils/asyncHandler.js";
 export const determineOrigin = asyncHandler(
     (req,res,next) => {
         const isVideo = req.originalUrl.includes("/videos/")

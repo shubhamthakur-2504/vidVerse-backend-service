@@ -60,5 +60,9 @@ const extractPublicId = (url) => {
     return publicId;
 }
 
+const isEdited = (createdAt, updatedAt) => {
+    const threshold = 1000; // 1 second threshold (in milliseconds)
+    return Math.abs(createdAt.getTime() - updatedAt.getTime()) > threshold;
+};
 
-export { getCreatedAtDiffField, formatRelativeTime, extractPublicId };
+export { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited };

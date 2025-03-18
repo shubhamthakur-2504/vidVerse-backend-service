@@ -6,10 +6,6 @@ const commentSchema = new Schema({
         type:String,
         required:true
     },
-    edited:{
-        type:Boolean,
-        default:false
-    },
     videoId:{
         type:Schema.Types.ObjectId,
         ref:"Video"

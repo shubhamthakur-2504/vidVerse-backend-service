@@ -24,11 +24,10 @@ const createComment = asyncHandler(async (req, res) => {
     const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
     const userId = req.user._id
     const model = getModel(type)
-
+    
     if(!content?.trim()){
         throw new apiError(400,"content is required")
     }
-    
     const instance  = await model.findById(id)
     if(!instance ){
         throw new apiError(404,`${type == "video" ? "Video" : "Tweet"} not found`)
@@ -38,13 +37,12 @@ const createComment = asyncHandler(async (req, res) => {
             content:content,
             userId:userId
         })
-
         if (type == 'video') {
             comment.videoId = id
         }else{
             comment.tweetId = id
         }
-        if((comment.videoId.equals(id)) || (comment.tweetId.equals(id))){
+        if((comment.videoId && comment.videoId.equals(id)) || (comment.tweetId && comment.tweetId.equals(id))){
             await comment.save({validateBeforeSave:false})
             comment.editStatus = isEdited(comment.createdAt,comment.updatedAt)
             res.status(200).json(new apiResponse(200,comment,"Comment created successfull"))
@@ -201,11 +199,9 @@ const createrCommentDelete = asyncHandler(async (req, res) => {
 }) 
 
 const getCommentDetails = asyncHandler(async (req, res) => {
-    const type = req.type
     const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
-    const model = getModel(type)
     try {
-        const comment = await model.aggregate([
+        const comment = await Comment.aggregate([
             {
                 $match:{_id:id}
             },
@@ -218,7 +214,7 @@ const getCommentDetails = asyncHandler(async (req, res) => {
                 }
             },
             {
-                $unwind:"owner"
+                $unwind:"$owner"
             },
             getCreatedAtDiffField(),
             {
@@ -241,6 +237,8 @@ const getCommentDetails = asyncHandler(async (req, res) => {
         delete comment[0].updatedAt
         res.status(200).json(new apiResponse(200,comment[0],"Comment found successfully"))
     } catch (error) {
+        console.log(error);
+        
         throw new apiError(500,"Something went wrong while getting comment")
     }
 })

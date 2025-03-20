@@ -20,7 +20,7 @@ router.route("/update/:videoId").patch(auth,upload.single("thumbnail"),updateVid
 router.route("/getallvideos").get(getAllVideos)
 router.route("/getvideodetails/:videoId").get(getVideoDetails)
 router.route("/getallcomments/:id").get(determineOrigin,getAllComments)
-router.route("/getcommentdetalil/:id").get(determineOrigin,getCommentDetails)
+router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)
 
 
 

@@ -70,4 +70,4 @@ const canEdit = (createdAt) => {
     return ((now-createdAt) < 15*60*1000)
 }
 
-export { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited };
+export { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited, canEdit };

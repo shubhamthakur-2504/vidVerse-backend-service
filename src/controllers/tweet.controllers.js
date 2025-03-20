@@ -8,23 +8,25 @@ import mongoose from "mongoose";
 
 const createTweet = asyncHandler(async (req, res) => {
     const {content} = req.body
-    const {imageLocal} = req.files?.image[0]?.path || null
+    const imageLocal = req.file?.path || null
 
     if (!content) {
         throw new apiError(400,"Content is required")
     }
-
+    
     let image = null;
     if (imageLocal){
         image = await uploadOnCloudinary(imageLocal,"image")
     }
+
+    
     try {
         const tweet = await Tweet.create({
             content : content,
-            image : image,
+            image : image.url,
             owner : req.user._id
         })
-
+        
         if (!tweet) {
             throw new apiError(500,"Something went wrong while creating tweet")
         }
@@ -33,7 +35,7 @@ const createTweet = asyncHandler(async (req, res) => {
 
     } catch (error) {
         if (imageLocal) {
-            await deleteFromCloudinary(image)
+            await deleteFromCloudinary(image.public_id)
         }
         throw new apiError(500,"Something went wrong failed to create tweet")
     }
@@ -84,6 +86,7 @@ const getAllTweets = asyncHandler(async (req, res) => {
             {
                 $project: {
                     content: 1,
+                    image:1,
                     createdAtDiff: 1,
                     createdAt: 1,
                     updatedAt: 1,
@@ -130,6 +133,7 @@ const getTweetDetails = asyncHandler(async (req, res) => {
             {
                 $project: {
                     content: 1,
+                    image:1,
                     createdAtDiff: 1,
                     createdAt: 1,
                     updatedAt: 1,

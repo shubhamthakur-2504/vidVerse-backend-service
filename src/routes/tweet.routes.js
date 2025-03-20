@@ -1,23 +1,23 @@
 import { Router } from "express";
-import { createTweet, deleteTweet, updateTweet, getAllTweets, getTweetDetails } from "../controllers/tweet.controllers";
-import { upload } from "../middleWares/multer.middleWare";
-import { verifyJwtToken as auth } from "../middleWares/auth.middleWare";
-import { determineOrigin } from "../middleWares/type.middleWare";
-import { createComment, deleteComment, editComment, getAllComments, getCommentDetails, createrCommentDelete } from "../controllers/comment.controllers";
+import { createTweet, deleteTweet, updateTweet, getAllTweets, getTweetDetails } from "../controllers/tweet.controllers.js";
+import { upload } from "../middleWares/multer.middleWare.js";
+import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
+import { determineOrigin } from "../middleWares/type.middleWare.js";
+import { createComment, deleteComment, editComment, getAllComments, getCommentDetails, createrCommentDelete } from "../controllers/comment.controllers.js";
 
 const router = Router()
 
 router.route("/getalltweet").get(getAllTweets)
-router.route("/getallcomment").get(determineOrigin,getAllComments)
+router.route("/getallcomment/:id").get(determineOrigin,getAllComments)
 
 router.route("/gettweet/:id").get(getTweetDetails)
-router.route("/getcommentdetalil/:id").get(determineOrigin,getCommentDetails)
+router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)
 
 router.route("/create").post(auth,upload.single("image"),createTweet)
-router.route("/createcomment").post(auth,determineOrigin,createComment)
+router.route("/createcomment/:id").post(auth,determineOrigin,upload.none(),createComment)
 
-router.route("/updatetweet/:id").patch(auth,updateTweet)
-router.route("/updatecomment/:id").patch(auth,determineOrigin,editComment)
+router.route("/updatetweet/:id").patch(auth,upload.none(),updateTweet)
+router.route("/updatecomment/:id").patch(auth,determineOrigin,upload.none(),editComment)
 
 router.route("/delete/:id").delete(auth,deleteTweet)
 router.route("/deletecomment/:id").delete(auth,determineOrigin,deleteComment)

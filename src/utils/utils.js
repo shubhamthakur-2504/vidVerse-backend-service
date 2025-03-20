@@ -65,4 +65,9 @@ const isEdited = (createdAt, updatedAt) => {
     return Math.abs(createdAt.getTime() - updatedAt.getTime()) > threshold;
 };
 
+const canEdit = (createdAt) => {
+    const now = new Date()
+    return ((now-createdAt) < 15*60*1000)
+}
+
 export { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited };

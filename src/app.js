@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import healthCheckRouter from './routes/healthCheck.routes.js';
 import userRouter from './routes/userRegister.routes.js';
 import videoRouter from './routes/video.routes.js';
+import tweetRouter from './routes/tweet.routes.js'
 
 const app = express();
 
@@ -26,5 +27,6 @@ app.use(cookieParser());
 app.use("/api/v1/healthcheck",healthCheckRouter);
 app.use("/api/v1/user",userRouter);
 app.use("/api/v1/videos",videoRouter);
+app.use("/api/v1/tweets",tweetRouter);
 
 export {app};

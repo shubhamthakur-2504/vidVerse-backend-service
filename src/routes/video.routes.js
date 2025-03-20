@@ -2,7 +2,7 @@ import { Router } from "express";
 import { upload } from "../middleWares/multer.middleWare.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails} from "../controllers/video.controllers.js";
-import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete } from "../controllers/comment.controllers.js";
+import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
 
 const router = Router();
@@ -19,7 +19,8 @@ router.route("/update/:videoId").patch(auth,upload.single("thumbnail"),updateVid
 // unsecure routes for getting video details
 router.route("/getallvideos").get(getAllVideos)
 router.route("/getvideodetails/:videoId").get(getVideoDetails)
-router.route("/getcomments/:id").get(determineOrigin,getAllComments)
+router.route("/getallcomments/:id").get(determineOrigin,getAllComments)
+router.route("/getcommentdetalil/:id").get(determineOrigin,getCommentDetails)
 
 
 

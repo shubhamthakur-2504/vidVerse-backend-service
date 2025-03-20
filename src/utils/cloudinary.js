@@ -30,6 +30,8 @@ const uploadOnCloudinary = async function (localFilePath, fileType) {
             resourceType = 'video';
         } else if(fileType === 'thumbnail'){
             folder = 'thumbnails'
+        }else if(fileType === 'image'){
+            folder = 'images'
         }
 
         const res = await cloudinary.uploader.upload(

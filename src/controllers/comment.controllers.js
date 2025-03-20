@@ -200,5 +200,49 @@ const createrCommentDelete = asyncHandler(async (req, res) => {
     
 }) 
 
+const getCommentDetails = asyncHandler(async (req, res) => {
+    const type = req.type
+    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
+    const model = getModel(type)
+    try {
+        const comment = await model.aggregate([
+            {
+                $match:{_id:id}
+            },
+            {
+                $lookup:{
+                    from:"users",
+                    localField:"userId",
+                    foreignField:"_id",
+                    as:"owner"
+                }
+            },
+            {
+                $unwind:"owner"
+            },
+            getCreatedAtDiffField(),
+            {
+                $project:{
+                    content:1,
+                    createdAt:1,
+                    updatedAt:1,
+                    owner:{
+                        userName:1,
+                        avatarUrl:1
+                    }
+                }
+            }
+        ])
+        if(comment.length === 0){
+            throw new apiError(404,"Comment not found")
+        }
+        comment[0].editStatus = isEdited(comment[0].createdAt,comment[0].updatedAt)
+        comment[0].createdAt = formatRelativeTime(comment[0].createdAt)
+        delete comment[0].updatedAt
+        res.status(200).json(new apiResponse(200,comment[0],"Comment found successfully"))
+    } catch (error) {
+        throw new apiError(500,"Something went wrong while getting comment")
+    }
+})
 
-export{createComment, deleteComment, getAllComments, editComment, createrCommentDelete}
+export{createComment, deleteComment, getAllComments, editComment, createrCommentDelete, getCommentDetails}

@@ -98,7 +98,7 @@ const registerUser = asyncHandler(async (req, res) => {
             avatarUrl: avatar?.url,
             coverImageUrl: cover?.url
         })
-        const createdUser = await User.findById(user._id).select("-password -refreshToken")
+        const createdUser = await User.findById(user._id).select("-password -refreshToken -__v -createdAt -updatedAt -watchHistory")
         if (!createdUser) {
             throw new apiError(500, "Something went wrong while registering user")
         }
@@ -144,7 +144,7 @@ const login = asyncHandler(async (req, res) => {
     const { refreshToken, accessToken } = await generateRefreshAndAccessToken(user._id)
 
     // loading loged in user data
-    const logedInUser = await User.findById(user._id).select("-password -refreshToken")
+    const logedInUser = await User.findById(user._id).select("-password -refreshToken -__v -createdAt -updatedAt -watchHistory")
     if (!logedInUser) {
         throw new apiError(500, "Something went wrong while logging in user")
     }
@@ -158,7 +158,7 @@ const login = asyncHandler(async (req, res) => {
     }
 
     // sending response
-    return res.status(200).cookie("accessToken", accessToken, option).cookie("refreshToken", refreshToken, option).json(new apiResponse(200, { user: logedInUser, accessToken, refreshToken }, "User logged in successfully"))
+    return res.status(200).cookie("accessToken", accessToken, option).cookie("refreshToken", refreshToken, option).json(new apiResponse(200, { user: logedInUser }, "User logged in successfully"))
 
 
 })

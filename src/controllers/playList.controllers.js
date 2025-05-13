@@ -1,10 +1,10 @@
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { Playlist } from "../models/playlist.model.js";
+import { PlayList } from "../models/playlist.model.js";
 import { Video } from "../models/video.model.js";
 import mongoose from "mongoose";
-import {uploadToCloudinary,deleteFromCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary,deleteFromCloudinary} from "../utils/cloudinary.js"
 import {extractPublicId} from "../utils/utils.js";
 
 const createPlayList = asyncHandler(async (req, res) => {
@@ -24,7 +24,7 @@ const createPlayList = asyncHandler(async (req, res) => {
     let thumbnail
     if(thumbnailLocal){
         try {
-            thumbnail = await uploadToCloudinary(thumbnailLocal,"thumbnail")
+            thumbnail = await uploadOnCloudinary(thumbnailLocal,"thumbnail")
             thumbnail = thumbnail.url
         } catch (error) {
             if(thumbnail){
@@ -158,7 +158,7 @@ const updatePlayList = asyncHandler(async (req, res) => {
     }
     if(thumbnailLocal){
         try {
-            thumbnail = await uploadToCloudinary(thumbnailLocal,"thumbnail")
+            thumbnail = await uploadOnCloudinary(thumbnailLocal,"thumbnail")
             thumbnail = thumbnail.url
         } catch (error) {
             if(thumbnail){

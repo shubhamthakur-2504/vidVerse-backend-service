@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createPlayList,addVideoToPlayList,removeVideoFromPlayList,updatePlayList,getPlayList,getAllPlayList,deletePlayList } from "../controllers/playList.controllers";
+import { createPlayList,addVideoToPlayList,removeVideoFromPlayList,updatePlayList,getPlayList,getAllPlayList,deletePlayList } from "../controllers/playList.controllers.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { upload } from "../middleWares/multer.middleWare.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
@@ -16,3 +16,5 @@ router.route("/getplaylist/:id").get(auth,determineOrigin,getPlayList)
 router.route("/getallplaylist").get(auth,determineOrigin,getAllPlayList)
 
 router.route("/deleteplaylist/:id").delete(auth,determineOrigin,deletePlayList) //need little refinment
+
+export default router

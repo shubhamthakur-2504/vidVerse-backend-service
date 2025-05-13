@@ -16,6 +16,16 @@ class apiError extends Error {
             Error.captureStackTrace(this, this.constructor)
         }
     }
+    toJSON() {
+        return {
+            success: this.success,
+            statusCode: this.statusCode,
+            message: this.message,
+            errors: this.errors,
+            stack: process.env.NODE_ENV === "development" ? this.stack : undefined 
+        };
+    }
+
 }
 
 export {apiError}

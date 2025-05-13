@@ -32,4 +32,16 @@ app.use("/api/v1/tweets",tweetRouter);
 app.use("/api/v1/videos/playlist",PlayListRouter);
 app.use("/api/v1/videos/save",PlayListRouter);
 
+
+// error handler
+app.use((err, req, res, next) => {
+    const statusCode = err.statusCode || 500;
+    res.status(statusCode).json({
+        success: false,
+        statusCode,
+        message: err.message || "Internal Server Error",
+        errors: err.errors || [],
+    });
+});
+
 export {app};

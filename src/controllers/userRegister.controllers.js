@@ -201,7 +201,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             httpOnly: true,
             expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRY * 24 * 60 * 60 * 1000),
             secure: process.env.NODE_ENV === "production",
-            sameSite: "none"
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         }
 
         return res.status(200).cookie("accessToken", accessToken, option).json(new apiResponse(200, { accessToken }, "Access token refreshed successfully"))

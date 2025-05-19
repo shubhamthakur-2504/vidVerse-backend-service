@@ -199,7 +199,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 title:1,
                 views:1,
                 duration:1,
-                createdAt:1,
                 createdAtDiff:1,
                 owner:{
                     userName:1,
@@ -260,7 +259,6 @@ const getVideoDetails = asyncHandler(async (req, res) => {
                     views:1,
                     duration:1,
                     description:1,
-                    createdAt:1,
                     createdAtDiff:1,
                     owner:{
                         userName:1,
@@ -353,4 +351,43 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     res.status(200).json(new apiResponse(200,updatedVideo,"Video Details Updated Successfully"))
 })
 
-export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails, updateVideoDetails, toggleIsPublished}
+const getMyVideos = asyncHandler(async (req, res) => {
+    const videos = await Video.aggregate([
+        {
+            $match:{
+                owner:req.user._id
+            }
+        },
+        getCreatedAtDiffField(),
+        {
+            $project:{
+                videoFileUrl:1,
+                thumbnailUrl:1,
+                title:1,
+                views:1,
+                duration:1,
+                description:1,
+                createdAtDiff:1
+            }
+        }
+    ])
+    if(!videos){
+        throw new apiError(500,"Something went wrong while fetching Videos")
+    }
+    if(videos.length === 0){
+        return res.status(200).json(new apiResponse(200,videos,"No videos found"))
+    }
+    videos.forEach(video => {
+        video.relativeTime = formatRelativeTime(video.createdAtDiff)
+        video.owner = {
+            userName: req.user.userName,
+            avatarUrl: req.user.avatarUrl
+        }
+
+        delete video.createdAtDiff
+        
+    })
+    return res.status(200).json(new apiResponse(200,videos,"Videos fetched successfully"))
+})
+
+export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails, updateVideoDetails, toggleIsPublished, getMyVideos}

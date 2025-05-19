@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middleWares/multer.middleWare.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
-import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails} from "../controllers/video.controllers.js";
+import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails, getMyVideos} from "../controllers/video.controllers.js";
 import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
 
@@ -14,7 +14,7 @@ router.route("/upload").post(auth, upload.fields([
 router.route("/delete/:videoId").delete(auth, deleteVideo);
 router.route("/toggle/:videoId").patch(auth,toggleIsPublished);
 router.route("/update/:videoId").patch(auth,upload.single("thumbnail"),updateVideoDetails)
-
+router.route("/getmyvideos").get(auth,getMyVideos)
 
 // unsecure routes for getting video details
 router.route("/getallvideos").get(getAllVideos)

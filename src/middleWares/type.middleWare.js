@@ -7,7 +7,7 @@ export const determineOrigin = asyncHandler(
         const isSave = req.originalUrl.includes("/save/");
         const isPlaylist = req.originalUrl.includes("/playlists/");
         
-        if ((!isVideo && !isTweet) || (!isSave && !isPlaylist)) {
+        if (!isVideo && !isTweet && !isSave && !isPlaylist) {
             throw new apiError(400, "Invalid type of request");
         }
         if(isVideo){

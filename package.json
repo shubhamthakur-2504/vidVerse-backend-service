@@ -18,6 +18,7 @@
   "author": "shubham2504",
   "license": "ISC",
   "dependencies": {
+    "agenda": "^5.0.0",
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",

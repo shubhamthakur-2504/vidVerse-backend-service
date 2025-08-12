@@ -8,13 +8,14 @@ import path from "path";
 import mongoose from "mongoose";
 import Ffmpeg  from "fluent-ffmpeg";
 import ffprobeStatic from "ffprobe-static";
-import ffmegStatic from "ffmpeg-static";
+import ffmpegStatic from "ffmpeg-static";
 import ffprobe from "fluent-ffmpeg";
 import { Session } from "inspector/promises";
 import { User } from "../models/user.model.js";
+import agenda from "../db/agendaSetup.js";
 
 // common config
-Ffmpeg.setFfmpegPath(ffmegStatic)
+Ffmpeg.setFfmpegPath(ffmpegStatic)
 Ffmpeg.setFfprobePath(ffprobeStatic.path)
 
 
@@ -119,7 +120,11 @@ const uploadVideo = asyncHandler(async (req, res) => {
         if(!uploadedVideo){
             throw new apiError(500,"Something went wrong while uploading")
         }
-        return res.status(200).json(new apiResponse(200,uploadedVideo,"Video uploaded successfully"))
+        res.status(200).json(new apiResponse(200,uploadedVideo,"Video uploaded successfully"))
+
+        // Schedule the job to process video chunks
+        await agenda.schedule('in 10 seconds', 'process video chunks', { videoId: uploadedVideo._id });
+        console.log('Video processing job scheduled'); //to be removed after adding logs logger
     } catch (error) {
         console.log("error while creating video",error);
         // await session.abortTransaction() //cluster mode

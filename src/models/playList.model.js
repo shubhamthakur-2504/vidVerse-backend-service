@@ -12,6 +12,10 @@ const playListSchema = new Schema({
         type:String,
         required:true
     },
+    exclusiveThumbnail:{
+        type:Boolean,
+        default:false
+    },
     videos:[{
         type:Schema.Types.ObjectId,
         ref:"Video"

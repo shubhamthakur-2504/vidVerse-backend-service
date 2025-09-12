@@ -4,15 +4,15 @@ export const determineOrigin = asyncHandler(
     (req,res,next) => {
         const isVideo = req.originalUrl.includes("/videos/");
         const isTweet = req.originalUrl.includes("/tweets/");
-        const isSave = req.originalUrl.includes("/save/");
-        const isPlaylist = req.originalUrl.includes("/playlists/");
+        const isUserPlaylist = req.originalUrl.includes("/userplaylist/");
+        const isCreaterPlaylist = req.originalUrl.includes("/createrplaylist/");
         
-        if (!isVideo && !isTweet && !isSave && !isPlaylist) {
+        if (!isVideo && !isTweet && !isUserPlaylist && !isCreaterPlaylist) {
             throw new apiError(400, "Invalid type of request");
         }
         if(isVideo){
-            if(isSave || isPlaylist){
-                req.type = isPlaylist ? "playlist" : "save"
+            if(isUserPlaylist || isCreaterPlaylist){
+                req.type = isCreaterPlaylist ? "createrplaylist" : "userplaylist"
             }else{
                 req.type = "video"
             }

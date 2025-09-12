@@ -29,8 +29,8 @@ app.use("/api/v1/healthcheck",healthCheckRouter);
 app.use("/api/v1/user",userRouter);
 app.use("/api/v1/videos",videoRouter);
 app.use("/api/v1/tweets",tweetRouter);
-app.use("/api/v1/videos/playlist",PlayListRouter);
-app.use("/api/v1/videos/save",PlayListRouter);
+app.use("/api/v1/videos/createrplaylist",PlayListRouter);
+app.use("/api/v1/videos/userplaylist",PlayListRouter);
 
 
 // error handler

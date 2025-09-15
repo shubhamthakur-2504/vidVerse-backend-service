@@ -1,8 +1,9 @@
-import { apiError } from "../utils/apiError";
+import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { Subscription } from "../models/subscription.model.js";
 import mongoose from "mongoose";
+import { User } from "../models/user.model.js";
 
 const subscribe = asyncHandler(async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
@@ -11,6 +12,10 @@ const subscribe = asyncHandler(async (req, res) => {
     const channelId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
     if (req.user._id.equals(channelId)) {
         throw new apiError(400, "Cannot subscribe to yourself");
+    }
+    const channelExists = await User.exists({_id: channelId});
+    if (!channelExists) {
+        throw new apiError(404, "Channel not found");
     }
     try {
         const subscription = await Subscription.create({
@@ -41,6 +46,9 @@ const unsubscribe = asyncHandler(async (req, res) => {
         }
         return res.status(204).json(new apiResponse(204, subscription, "Unsubscribed successfully"))
     } catch (error) {
+        if (error instanceof apiError) {
+            throw error;
+        }
         throw new apiError(500,"Something went wrong while unsubscribing") 
     }
 })
@@ -50,6 +58,10 @@ const subscribersCount = asyncHandler(async (req, res) => {
         throw new apiError(400, "Invalid channel id");
     }
     const channelId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
+    const channelExists = await User.exists({_id: channelId});
+    if (!channelExists) {
+        throw new apiError(404, "Channel not found");
+    }
     try {
         const count = await Subscription.countDocuments({ channel: channelId })
         return res.status(200).json(new apiResponse(200, { count }, "Subscribers count fetched successfully"))
@@ -63,6 +75,10 @@ const isSubscribed = asyncHandler(async (req, res) => {
         throw new apiError(400, "Invalid channel id");
     }
     const channelId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
+    const channelExists = await User.exists({_id: channelId});
+    if (!channelExists) {
+        throw new apiError(404, "Channel not found");
+    }
     try {
         const subscription = await Subscription.exists({
             subscriber: req.user._id,

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { subscribe, unsubscribe, subscribersCount, isSubscribed, Mysubscriptions } from "../controllers/subscription.controllers";
+import { subscribe, unsubscribe, subscribersCount, isSubscribed, Mysubscriptions } from "../controllers/subscription.controllers.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 
 const router = Router() 

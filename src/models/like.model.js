@@ -15,7 +15,7 @@ const likeSchema = new Schema({
         enum:["Video","Tweet","Comment"],
         required:true
     },
-    islike:{
+    isLike:{
         type:Boolean,
         default:true
     }

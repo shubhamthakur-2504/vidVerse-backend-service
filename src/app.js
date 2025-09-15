@@ -7,7 +7,7 @@ import healthCheckRouter from './routes/healthCheck.routes.js';
 import userRouter from './routes/userRegister.routes.js';
 import videoRouter from './routes/video.routes.js';
 import tweetRouter from './routes/tweet.routes.js'
-import PlayListRouter from './routes/playList.routes.js';
+import playListRouter from './routes/playList.routes.js';
 
 const app = express();
 
@@ -29,8 +29,8 @@ app.use("/api/v1/healthcheck",healthCheckRouter);
 app.use("/api/v1/user",userRouter);
 app.use("/api/v1/videos",videoRouter);
 app.use("/api/v1/tweets",tweetRouter);
-app.use("/api/v1/videos/createrplaylist",PlayListRouter);
-app.use("/api/v1/videos/userplaylist",PlayListRouter);
+app.use("/api/v1/videos/creatorplaylist",playListRouter);
+app.use("/api/v1/videos/userplaylist",playListRouter);
 
 
 // error handler

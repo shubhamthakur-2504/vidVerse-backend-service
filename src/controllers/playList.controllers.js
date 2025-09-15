@@ -45,7 +45,7 @@ const createPlayList = asyncHandler(async (req, res) => {
         thumbnail = video.thumbnailUrl
     }
 
-    if(req.type === "createrplaylist"){
+    if(req.type === "creatorplaylist"){
         if(!req.user._id.equals(video.owner)){
             throw new apiError(403,"Unauthorized to create playlist")
         }
@@ -115,7 +115,7 @@ const addVideoToPlayList = asyncHandler(async (req, res) => {
     if(playList.videos.includes(videoId)){
         throw new apiError(400,"Video already added to playlist")
     }
-    if(req.type === "createrplaylist"){
+    if(req.type === "creatorplaylist"){
         if(!req.user._id.equals(video.owner)){
             throw new apiError(403,"Unauthorized to add video to playlist")
         }

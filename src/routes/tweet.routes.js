@@ -2,6 +2,7 @@ import { Router } from "express";
 import { createTweet, deleteTweet, updateTweet, getAllTweets, getTweetDetails } from "../controllers/tweet.controllers.js";
 import { upload } from "../middleWares/multer.middleWare.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
+import { lightVerifyJwtToken as lightauth } from "../middleWares/auth.middleWare.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
 import { createComment, deleteComment, editComment, getAllComments, getCommentDetails, createrCommentDelete } from "../controllers/comment.controllers.js";
 
@@ -10,7 +11,7 @@ const router = Router()
 router.route("/getalltweet").get(getAllTweets)
 router.route("/getallcomment/:id").get(determineOrigin,getAllComments)
 
-router.route("/gettweet/:id").get(getTweetDetails)
+router.route("/gettweet/:id").get(lightauth, determineOrigin, getTweetDetails)
 router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)
 
 router.route("/create").post(auth,upload.single("image"),createTweet)

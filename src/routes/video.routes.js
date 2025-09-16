@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { upload } from "../middleWares/multer.middleWare.js";
+import { determineOrigin } from "../middleWares/type.middleWare.js";
+import { createView as view } from "../middleWares/view.middleWare.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { lightVerifyJwtToken as lightauth } from "../middleWares/auth.middleWare.js";
 import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails, getMyVideos} from "../controllers/video.controllers.js";
 import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
-import { determineOrigin } from "../middleWares/type.middleWare.js";
 
 const router = Router();
 router.route("/upload").post(auth, upload.fields([
@@ -19,7 +20,7 @@ router.route("/getmyvideos").get(auth,getMyVideos)
 
 // unsecure routes for getting video details
 router.route("/getallvideos").get(getAllVideos)
-router.route("/getvideodetails/:videoId").get(lightauth, determineOrigin, getVideoDetails)
+router.route("/getvideodetails/:videoId").get(lightauth, determineOrigin, view, getVideoDetails)
 router.route("/getallcomments/:id").get(determineOrigin,getAllComments)
 router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)
 

@@ -11,6 +11,11 @@ const PORT = process.env.PORT || 3000
 connectDB().then(async () => {
     await agenda.start();
     console.log("Agenda started successfully");
+
+    // start the agenda jobs
+    agenda.every("5 minutes", "count views")
+
+
     // start the express server
     app.listen(PORT, () => {
         console.log(`server is running on port ${PORT}`);

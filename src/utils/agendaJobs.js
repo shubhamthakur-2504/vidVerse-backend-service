@@ -6,6 +6,7 @@ import fs from 'fs';
 import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
 import { Tweet } from "../models/tweet.model.js";
+import { View } from "../models/view.model.js";
 
 agenda.define("process video chunks", async (job) => {
     console.log('Processing video chunks job started'); //to be removed after adding logs logger
@@ -92,3 +93,64 @@ agenda.define("validate like", async (job) => {
 // in next update for like validation
 // add bulk validation job to validate multiple likes at once
 // make a collection of invalid likes and delete them in bulk
+
+agenda.define("count views", async (job) => {
+    console.log('Counting views job started');
+    try {
+        // Aggregate unprocessed views
+        const viewCounts = await View.aggregate([
+            { $match: { processed: false } },
+            {
+                $group: {
+                    _id: { targetId: "$targetId", targetType: "$targetType" },
+                    count: { $sum: 1 },
+                    viewIds: { $push: "$_id" }
+                }
+            },
+            { $limit: 1000 },
+            { $project: { targetId: "$_id.targetId", targetType: "$_id.targetType", count: 1, viewIds: 1, _id: 0 } }
+        ]);
+
+        console.log(`Found ${viewCounts.length} targets with new views`);
+
+        const bulkOps = { Video: [], Tweet: [] };
+        let allViewIds = [];
+
+        for (const vc of viewCounts) {
+            const { targetId, targetType, count, viewIds } = vc;
+            allViewIds.push(...viewIds);
+
+            if (targetType === "Video" || targetType === "Tweet") {
+                bulkOps[targetType].push({
+                    updateOne: {
+                        filter: { _id: targetId },
+                        update: { $inc: { views: count } }
+                    }
+                });
+            } else {
+                console.log(`Unknown targetType: ${targetType}`);
+            }
+        }
+
+        // Execute bulkWrite per target type
+        for (const type of ["Video", "Tweet"]) {
+            if (bulkOps[type].length > 0) {
+                await (type === "Video" ? Video : Tweet).bulkWrite(bulkOps[type]);
+                console.log(`Updated ${bulkOps[type].length} ${type} documents`);
+            }
+        }
+
+        // Mark all processed views in one batch
+        if (allViewIds.length > 0) {
+            await View.updateMany(
+                { _id: { $in: allViewIds } },
+                { $set: { processed: true } }
+            );
+        }
+
+        console.log('Views counting job completed');
+
+    } catch (error) {
+        console.error('Error counting views:', error);
+    }
+});

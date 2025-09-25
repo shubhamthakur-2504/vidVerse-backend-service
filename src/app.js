@@ -12,7 +12,7 @@ import subscriptionRouter from './routes/subscription.routes.js';
 import reaction from './routes/like.routes.js';
 
 const app = express();
-
+app.set('trust proxy', true);
 //cors
 app.use(cors({
     origin: process.env.CLIENT_URL,

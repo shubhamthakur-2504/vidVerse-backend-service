@@ -1,5 +1,4 @@
 import mongoose, {Schema} from "mongoose";
-import crypto from "crypto";
 
 const viewSchema = new Schema({
   targetId: {
@@ -29,18 +28,11 @@ const viewSchema = new Schema({
     default: Date.now,
     expires: "6h",
   },
+  _ipAddress: { type: String, select: false },
+  _userAgent: { type: String, select: false },
 });
 
-viewSchema.pre("save", function (next) {
-  if (this.isModified("viewerHash")) return next(); 
-  
-  this.viewerHash = crypto
-    .createHash("sha256")
-    .update(this._ipAddress + this._userAgent) 
-    .digest("hex");
 
-  next();
-});
 
 viewSchema.index({ targetId: 1, targetType: 1, viewerHash: 1 }, { unique: true });
 

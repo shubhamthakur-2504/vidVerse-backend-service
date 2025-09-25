@@ -1,33 +1,45 @@
 import {apiError} from "../utils/apiError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { View } from "../models/view.model.js";
+import mongoose from "mongoose";
+import crypto from "crypto";
 
 export const createView = asyncHandler(async (req, res, next) => {
-  const targetId = req.params.id;
+  
+  let targetId = req.params.videoId;
   const targetType = req.type === "video" ? "Video" : "Tweet";
   const userId = req.user?._id || null;
 
   if (!mongoose.isValidObjectId(targetId)) {
-    throw new apiError(400, "Invalid target id");
+    console.log("hit invalid id"); //to be removed after adding logs logger
+    
+    return next();
   }
-
+  
+  targetId = mongoose.Types.ObjectId.createFromHexString(targetId);
+  const ipAddress = req.ip || req.socket.remoteAddress;
+  const userAgent = req.get("User-Agent") || "Unknown";
+  const viewerHash = crypto.createHash("sha256").update(ipAddress + userAgent).digest("hex");
+  
   const view = new View({
     targetId,
     targetType,
     userId,
-    _ipAddress: req.ip,
-    _userAgent: req.get("User-Agent") || "Unknown",
+    viewerHash,
   });
 
+  
   try {
-    await view.save(); // viewerHash is computed here
+    await view.save();
+    
+    next();
   } catch (error) {
     if (error.code === 11000) {
       // duplicate view, ignore
+      next();
     } else {
-      console.log("View creation error::", error);
+      console.log("View creation error::", error); //to be removed after adding logs logger
+      throw new apiError(500, "Internal server error while creating view");
     }
   }
-
-  next();
 });

@@ -140,6 +140,9 @@ const uploadVideo = asyncHandler(async (req, res) => {
 // delete video
 const deleteVideo = asyncHandler(async (req, res) => {
     const videoId = req.params.videoId
+    if (!mongoose.isValidObjectId(videoId)) {
+        return res.status(404).json(new apiResponse(404, null, "Video not found"));
+    }
     const video = await Video.findById(videoId)
     if(!video){
         throw new apiError(404,"Video not found")
@@ -178,6 +181,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
 //get all videos
 
 const getAllVideos = asyncHandler(async (req, res) => {
+    
     const videos = await Video.aggregate([
         {
             $match:{
@@ -230,67 +234,78 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 // videoDetails
 
-const getVideoDetails = asyncHandler(async (req, res) => {
-    const video = req.params.videoId
-    
+const getVideoDetails = asyncHandler(async (req, res) => {    
+    const videoId = req.params.videoId;
+
+    if (!mongoose.isValidObjectId(videoId)) {
+        return res.status(404).json(new apiResponse(404, null, "Video not found"));
+    }
+
     try {
         const videoDetails = await Video.aggregate([
             {
-                $match:{
-                    _id:mongoose.Types.ObjectId.createFromHexString(video),
-                    isPublished:true
+                $match: {
+                    _id: new mongoose.Types.ObjectId(videoId),
+                    isPublished: true
                 }
             },
             {
-                $lookup:{
-                    from:"users",
-                    localField:"owner",
-                    foreignField:"_id",
-                    as:"owner"
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "owner"
                 }
             },
             {
-                $unwind:{ 
+                $unwind: { 
                     path: "$owner",
                     preserveNullAndEmptyArrays: true
                 }
             },
             getCreatedAtDiffField(),
             {
-                $project:{
-                    videoFileUrl:1,
-                    thumbnailUrl:1,
-                    title:1,
-                    views:1,
-                    duration:1,
-                    description:1,
-                    createdAtDiff:1,
-                    owner:{
-                        userName:1,
-                        avatarUrl:1
+                $project: {
+                    videoFileUrl: 1,
+                    thumbnailUrl: 1,
+                    title: 1,
+                    views: 1,
+                    duration: 1,
+                    description: 1,
+                    createdAtDiff: 1,
+                    owner: {
+                        userName: 1,
+                        avatarUrl: 1
                     }
                 }
             }
-    
-        ])
-        if(videoDetails.length === 0){
-            throw new apiError(404,"Video not found")
+        ]);
+
+        if (videoDetails.length === 0) {
+            return res.status(404).json(new apiResponse(404, null, "Video not found"));
         }
-    
-        videoDetails[0].relativeTime = formatRelativeTime(videoDetails[0].createdAtDiff)
-        delete videoDetails[0].createdAtDiff
-        
-        
-    
-        return res.status(200).json(new apiResponse(200,videoDetails[0],"Video details fetched successfully"))
+        // format result
+        const video = videoDetails[0];
+        video.relativeTime = formatRelativeTime(video.createdAtDiff);
+        delete video.createdAtDiff;
+
+        return res.status(200).json(new apiResponse(200, video, "Video details fetched successfully"));
     } catch (error) {
-        console.log(error);
-        throw new apiError(404,"Video not found")
+        if (res.headersSent) {
+            // Don't send another response
+            return;
+        }
+        console.error("Error fetching video details:", error);
+        return res.status(500).json(new apiResponse(500, null, "Something went wrong while fetching video details"));
     }
-})
+});
+
 
 const toggleIsPublished = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    if (!mongoose.isValidObjectId(videoId)) {
+        return res.status(404).json(new apiResponse(404, null, "Video not found"));
+    }
     const video = await Video.findById(videoId)
     if(!video){
         throw new apiError(404,"Video not found")
@@ -306,6 +321,9 @@ const toggleIsPublished = asyncHandler(async (req, res) => {
 
 const updateVideoDetails = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    if (!mongoose.isValidObjectId(videoId)) {
+        return res.status(404).json(new apiResponse(404, null, "Video not found"));
+    }
     const {title, description} = req.body
     const thumbnailLocal = req.files?.thumbnail?.[0]?.path
     const videoToUpdate = await Video.findById(videoId)

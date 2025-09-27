@@ -1,7 +1,7 @@
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { PlayList } from "../models/playlist.model.js";
+import { PlayList } from "../models/playList.model.js";
 import { Video } from "../models/video.model.js";
 import mongoose from "mongoose";
 import {uploadOnCloudinary,deleteFromCloudinary} from "../utils/cloudinary.js"

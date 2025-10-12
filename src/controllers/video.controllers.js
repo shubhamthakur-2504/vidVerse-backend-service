@@ -185,7 +185,8 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const videos = await Video.aggregate([
         {
             $match:{
-                isPublished:true
+                isPublished:true,
+                status: "ready"
             }
         },
         {
@@ -210,6 +211,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 duration:1,
                 createdAtDiff:1,
                 owner:{
+                    _id:1,
                     userName:1,
                     avatarUrl:1
                 }
@@ -245,8 +247,9 @@ const getVideoDetails = asyncHandler(async (req, res) => {
         const videoDetails = await Video.aggregate([
             {
                 $match: {
-                    _id: new mongoose.Types.ObjectId(videoId),
-                    isPublished: true
+                    _id: mongoose.Types.ObjectId.createFromHexString(videoId),
+                    isPublished: true,
+                    status: "ready"
                 }
             },
             {
@@ -274,6 +277,7 @@ const getVideoDetails = asyncHandler(async (req, res) => {
                     description: 1,
                     createdAtDiff: 1,
                     owner: {
+                        _id: 1,
                         userName: 1,
                         avatarUrl: 1
                     }

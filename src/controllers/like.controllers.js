@@ -93,6 +93,27 @@ const getReaction = asyncHandler(async (req, res) => {
     }
 })
 
-export { toggleReaction, likeCount, getReaction };
 
-// next update : add remove reaction
+const removeReaction = asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        throw new apiError(400, "Invalid target id");
+    }
+    const targetId = mongoose.Types.ObjectId.createFromHexString(req.params.id);
+    const targetType = req.body.targetType;
+    if (!["Video", "Tweet", "Comment"].includes(targetType)) {
+        throw new apiError(400, "Invalid target type");
+    }
+    try {
+        const reaction = await Like.findOneAndDelete({ userId: req.user._id, targetId, targetType });
+        if (!reaction) {
+            throw new apiError(404, "Reaction not found");
+        }
+        return res
+            .status(204)
+            .json(new apiResponse(204, reaction, "Reaction removed"));
+    } catch (error) {
+        throw new apiError(500, "Something went wrong while removing reaction");
+    }
+})
+export { toggleReaction, likeCount, getReaction, removeReaction };
+

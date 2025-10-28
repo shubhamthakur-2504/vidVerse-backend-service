@@ -7,6 +7,7 @@ import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
 import { Tweet } from "../models/tweet.model.js";
 import { View } from "../models/view.model.js";
+import { extractPublicId } from "./utils.js";
 
 agenda.define("process video chunks", async (job) => {
     console.log('Processing video chunks job started'); //to be removed after adding logs logger
@@ -37,7 +38,9 @@ agenda.define("process video chunks", async (job) => {
             video.status = 'ready'
             await video.save();
             console.log('Video updated successfully'); //to be removed after adding logs logger
-            await deleteFromCloudinary(orignalVideoUrl);
+            const publicId = extractPublicId(orignalVideoUrl);
+            console.log(`Deleting original video from Cloudinary with public ID: ${publicId}`); //to be removed after adding logs logger
+            await deleteFromCloudinary(publicId);
             console.log('Deleted video from Cloudinary'); //to be removed after adding logs logger
             fs.unlinkSync(localPath); // Clean up local file
             console.log('Deleted local file'); //to be removed after adding logs logger

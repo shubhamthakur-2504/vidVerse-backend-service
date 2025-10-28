@@ -231,6 +231,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
         delete video.createdAtDiff
         
     })
+    videos.sort(() => Math.random() - 0.5);
     return res.status(200).json(new apiResponse(200,videos,"Videos fetched successfully"))
 })
 

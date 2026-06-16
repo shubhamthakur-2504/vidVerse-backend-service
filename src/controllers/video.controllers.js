@@ -71,6 +71,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
     let duration = 0
     const title = req.body?.title
     const description = req.body?.description || "Discription for this video is not provided"
+    const category = req.body?.category || "General"
 
     if(!user){
         throw new apiError(401,"Unauthorized")
@@ -110,6 +111,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
             title:title,
             description:description,
             duration:duration,
+            category:category,
             owner:user._id
         }) //in cluster using session use create([{params},{params}],{session})
         
@@ -181,13 +183,27 @@ const deleteVideo = asyncHandler(async (req, res) => {
 //get all videos
 
 const getAllVideos = asyncHandler(async (req, res) => {
+    const { category, query } = req.query;
+    
+    const matchStage = {
+        isPublished: true,
+        status: "ready"
+    };
+    
+    if (category) {
+        matchStage.category = category;
+    }
+    
+    if (query) {
+        matchStage.$or = [
+            { title: { $regex: query, $options: "i" } },
+            { description: { $regex: query, $options: "i" } }
+        ];
+    }
     
     const videos = await Video.aggregate([
         {
-            $match:{
-                isPublished:true,
-                status: "ready"
-            }
+            $match: matchStage
         },
         {
             $lookup:{
@@ -209,6 +225,8 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 title:1,
                 views:1,
                 duration:1,
+                category:1,
+                createdAt:1,
                 createdAtDiff:1,
                 owner:{
                     _id:1,
@@ -275,12 +293,16 @@ const getVideoDetails = asyncHandler(async (req, res) => {
                     title: 1,
                     views: 1,
                     duration: 1,
+                    status: 1,
                     description: 1,
+                    category: 1,
+                    createdAt: 1,
                     createdAtDiff: 1,
                     owner: {
                         _id: 1,
                         userName: 1,
-                        avatarUrl: 1
+                        avatarUrl: 1,
+                        fullName: 1
                     }
                 }
             }
@@ -372,6 +394,9 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     if(description){
         videoToUpdate.description = description
     }
+    if(req.body?.category){
+        videoToUpdate.category = req.body.category
+    }
     await videoToUpdate.save({validateBeforeSave:false})
 
     const updatedVideo = await Video.findById(videoId).select("videoFileUrl thumbnailUrl title description ")
@@ -395,6 +420,9 @@ const getMyVideos = asyncHandler(async (req, res) => {
                 views:1,
                 duration:1,
                 description:1,
+                isPublished:1,
+                status:1,
+                createdAt:1,
                 createdAtDiff:1
             }
         }
@@ -418,4 +446,15 @@ const getMyVideos = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200,videos,"Videos fetched successfully"))
 })
 
-export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails, updateVideoDetails, toggleIsPublished, getMyVideos}
+// Get distinct categories that actually have published+ready videos
+const getCategories = asyncHandler(async (req, res) => {
+    const categories = await Video.distinct("category", {
+        isPublished: true,
+        status: "ready"
+    })
+    // Filter out null/undefined, sort alphabetically
+    const sorted = categories.filter(Boolean).sort()
+    return res.status(200).json(new apiResponse(200, sorted, "Categories fetched successfully"))
+})
+
+export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails, updateVideoDetails, toggleIsPublished, getMyVideos, getCategories}

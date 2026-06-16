@@ -35,6 +35,11 @@ const videoSchema = new Schema({
         enum:["processing","ready","failed"],
         default:"processing"
     },
+    category:{
+        type:String,
+        enum:["General","Gaming","Music","Sports","News","Science","Education","Entertainment","Comedy","Travel","Food","Technology","Fitness","Fashion","Film","Anime","Podcasts","Vlogs"],
+        default:"General"
+    },
     owner:{
         type:Schema.Types.ObjectId,
         ref:"User",

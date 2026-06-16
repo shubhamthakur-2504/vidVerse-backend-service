@@ -112,6 +112,7 @@ const getAllComments = asyncHandler(async (req, res) => {
             getCreatedAtDiffField(),
             {
                 $project:{
+                    userId:1,
                     content:1,
                     createdAtDiff:1,
                     createdAt:1,

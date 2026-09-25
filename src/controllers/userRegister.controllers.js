@@ -132,20 +132,22 @@ const registerUser = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
 
     // loading data from request
-    const { userName, email, password } = req.body
+    // `identifier` is a username or an email; `email` / `userName` are still accepted for older clients
+    const { identifier, userName, email, password } = req.body
+    const loginId = String(identifier ?? email ?? userName ?? "").trim().toLowerCase()
 
     // checks for data
-    if (!email && !userName) {
-        throw new apiError(400, "Either Username or email require for Login")
+    if (!loginId) {
+        throw new apiError(400, "Username or email is required for login")
     }
     if (!password) {
         throw new apiError(400, "Password is required")
     }
 
-    // finding user in database
-    const user = await User.findOne({
-        $or: [{ userName: userName }, { email: email }]
-    })
+    // finding user in database (both fields are stored lowercase)
+    const user = await User.findOne(
+        loginId.includes("@") ? { email: loginId } : { userName: loginId }
+    )
     if (!user) {
         throw new apiError(404, "User not found")
     }

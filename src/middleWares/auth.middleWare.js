@@ -28,20 +28,16 @@ export const lightVerifyJwtToken = asyncHandler(async (req,_, next) => {
     
     if (!token){
         req.user = null
-        next()
+        return next()
     }
+    let user = null
     try {
-        const decodedToken = JWT.verify(token, process.env.JWT_ACCESS_SECRET);    
-        const user  = await User.findById(decodedToken?.id).select("-password -refreshToken")
-        
-        if(!user){
-            req.user = null
-            next()
-        }
-        req.user = user
-        next()
+        const decodedToken = JWT.verify(token, process.env.JWT_ACCESS_SECRET);
+        user = await User.findById(decodedToken?.id).select("-password -refreshToken")
     } catch (error) {
-        req.user = null
-        next()
+        user = null
     }
+    // next() stays outside the try so errors thrown further down the chain are not swallowed or re-run
+    req.user = user || null
+    return next()
 })

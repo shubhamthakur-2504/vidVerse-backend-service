@@ -17,13 +17,16 @@ const createTweet = asyncHandler(async (req, res) => {
     let image = null;
     if (imageLocal){
         image = await uploadOnCloudinary(imageLocal,"image")
+        if (!image) {
+            throw new apiError(500,"Something went wrong while uploading image")
+        }
     }
 
-    
+
     try {
         const tweet = await Tweet.create({
             content : content,
-            image : image.url,
+            image : image?.url,
             owner : req.user._id
         })
         
@@ -34,7 +37,7 @@ const createTweet = asyncHandler(async (req, res) => {
         res.status(200).json(new apiResponse(200,tweet,"Tweet created successfully"))
 
     } catch (error) {
-        if (imageLocal) {
+        if (image?.public_id) {
             await deleteFromCloudinary(image.public_id)
         }
         throw new apiError(500,"Something went wrong failed to create tweet")

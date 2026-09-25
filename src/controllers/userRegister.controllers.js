@@ -12,6 +12,20 @@ function validateEmail(email) {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
 }
+// cookie options shared by login, refresh and logout so set-cookie and clear-cookie always match
+// (browsers reject SameSite=None without Secure, so dev uses Lax)
+function authCookieOptions({ withExpiry = true } = {}) {
+    const isProduction = process.env.NODE_ENV === "production"
+    const options = {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax"
+    }
+    if (withExpiry) {
+        options.expires = new Date(Date.now() + Number(process.env.JWT_COOKIE_EXPIRY) * 24 * 60 * 60 * 1000)
+    }
+    return options
+}
 function deleteLocalFile(filePath) {
     try {
         fs.unlinkSync(filePath)
@@ -148,14 +162,7 @@ const login = asyncHandler(async (req, res) => {
     if (!logedInUser) {
         throw new apiError(500, "Something went wrong while logging in user")
     }
-    const option = {
-        httpOnly: true,
-        expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRY * 24 * 60 * 60 * 1000),
-        // secure:process.env.NODE_ENV === "production",
-        // sameSite:"none"
-        secure: process.env.NODE_ENV === "production" ? true : false, // False for development
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax" // "lax" allows cookies in dev mode
-    }
+    const option = authCookieOptions()
 
     // sending response
     return res.status(200).cookie("accessToken", accessToken, option).cookie("refreshToken", refreshToken, option).json(new apiResponse(200, { user: logedInUser }, "User logged in successfully"))
@@ -165,14 +172,11 @@ const login = asyncHandler(async (req, res) => {
 
 //logout
 const logout = asyncHandler(async (req, res) => {
+    // $unset, not $set: undefined — Mongoose strips undefined values, which left the token valid
     await User.findByIdAndUpdate(req.user._id, {
-        $set: { refreshToken: undefined }
-    }, { new: true })
-    const option = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "none"
-    }
+        $unset: { refreshToken: 1 }
+    })
+    const option = authCookieOptions({ withExpiry: false })
 
     return res.status(200).clearCookie("accessToken", option).clearCookie("refreshToken", option).json(new apiResponse(200, "User logged out successfully"))
 })
@@ -197,12 +201,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         }
 
         const accessToken = await generateAccessToken(user)
-        const option = {
-            httpOnly: true,
-            expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRY * 24 * 60 * 60 * 1000),
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        }
+        const option = authCookieOptions()
 
         return res.status(200).cookie("accessToken", accessToken, option).json(new apiResponse(200, { accessToken }, "Access token refreshed successfully"))
     } catch (error) {

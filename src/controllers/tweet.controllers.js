@@ -157,19 +157,25 @@ const getTweetDetails = asyncHandler(async (req, res) => {
 
 
 const updateTweet = asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        throw new apiError(400, "Invalid tweet id")
+    }
     const tweetId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
     const tweet = await Tweet.findById(tweetId)
     if(!tweet){
         throw new apiError(404,"Tweet not found")
     }
+    if(!tweet.owner.equals(req.user._id)){
+        throw new apiError(403,"Unauthorized to edit this tweet")
+    }
     if(!canEdit(tweet.createdAt)){
         throw new apiError(400,"This tweet can not be edited")
     }
+    const content = req.body.content
+    if (!content || content.trim().length === 0) {
+        throw new apiError(400, "Content cannot be empty");
+    }
     try {
-        const content = req.body.content
-        if (!content || content.trim().length === 0) {
-            throw new apiError(400, "Content cannot be empty");
-        }        
         tweet.content = content
         await tweet.save({validateBeforeSave:false})
         res.status(200).json(new apiResponse(200,tweet,"Tweet updated successfully1"))

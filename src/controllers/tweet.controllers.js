@@ -113,6 +113,9 @@ const getAllTweets = asyncHandler(async (req, res) => {
 
 
 const getTweetDetails = asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        throw new apiError(400, "Invalid tweet id")
+    }
     const tweetId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
     try {
         const tweet = await Tweet.aggregate([
@@ -154,6 +157,7 @@ const getTweetDetails = asyncHandler(async (req, res) => {
         delete tweet[0].updatedAt
         res.status(200).json(new apiResponse(200,tweet[0],"Tweet fetched successfully"))
     } catch (error) {
+        if (error instanceof apiError) throw error
         throw new apiError(500,"Something went wrong while fetching tweet")
     }
 })

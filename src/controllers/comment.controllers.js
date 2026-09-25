@@ -200,6 +200,9 @@ const createrCommentDelete = asyncHandler(async (req, res) => {
 }) 
 
 const getCommentDetails = asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        throw new apiError(400, "Invalid comment id")
+    }
     const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
     try {
         const comment = await Comment.aggregate([
@@ -238,6 +241,7 @@ const getCommentDetails = asyncHandler(async (req, res) => {
         delete comment[0].updatedAt
         res.status(200).json(new apiResponse(200,comment[0],"Comment found successfully"))
     } catch (error) {
+        if (error instanceof apiError) throw error
         console.log(error);
         
         throw new apiError(500,"Something went wrong while getting comment")

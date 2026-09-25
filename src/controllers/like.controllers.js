@@ -112,6 +112,7 @@ const removeReaction = asyncHandler(async (req, res) => {
             .status(204)
             .json(new apiResponse(204, reaction, "Reaction removed"));
     } catch (error) {
+        if (error instanceof apiError) throw error;
         throw new apiError(500, "Something went wrong while removing reaction");
     }
 })

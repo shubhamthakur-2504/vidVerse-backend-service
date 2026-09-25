@@ -457,4 +457,9 @@ const getCategories = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200, sorted, "Categories fetched successfully"))
 })
 
-export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails, updateVideoDetails, toggleIsPublished, getMyVideos, getCategories}
+// the view itself is stored by the view middleware; this only ends the request
+const recordView = asyncHandler(async (req, res) => {
+    return res.status(204).end()
+})
+
+export {uploadVideo , deleteVideo, getAllVideos, getVideoDetails, updateVideoDetails, toggleIsPublished, getMyVideos, getCategories, recordView}

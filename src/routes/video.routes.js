@@ -4,7 +4,7 @@ import { determineOrigin } from "../middleWares/type.middleWare.js";
 import { createView as view } from "../middleWares/view.middleWare.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { lightVerifyJwtToken as lightauth } from "../middleWares/auth.middleWare.js";
-import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails, getMyVideos, getCategories} from "../controllers/video.controllers.js";
+import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails, getMyVideos, getCategories, recordView} from "../controllers/video.controllers.js";
 import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
 
 const router = Router();
@@ -21,7 +21,10 @@ router.route("/getmyvideos").get(auth,getMyVideos)
 // unsecure routes for getting video details
 router.route("/getallvideos").get(getAllVideos)
 router.route("/getcategories").get(getCategories)
-router.route("/getvideodetails/:videoId").get(lightauth, determineOrigin, view, getVideoDetails)
+router.route("/getvideodetails/:videoId").get(lightauth, determineOrigin, getVideoDetails)
+// views are recorded by the browser player, not on details fetch: the details are fetched server-side
+// by Next.js, which would make every visitor share the Next server's ip + user agent
+router.route("/:videoId/view").post(lightauth, determineOrigin, view, recordView)
 router.route("/getallcomments/:id").get(determineOrigin,getAllComments)
 router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)
 

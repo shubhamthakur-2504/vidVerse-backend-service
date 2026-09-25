@@ -6,7 +6,8 @@ import crypto from "crypto";
 
 export const createView = asyncHandler(async (req, res, next) => {
   
-  let targetId = req.params.videoId;
+  // video routes name the param :videoId, tweet routes name it :id
+  let targetId = req.params.videoId ?? req.params.id;
   const targetType = req.type === "video" ? "Video" : "Tweet";
   const userId = req.user?._id || null;
 
@@ -19,7 +20,9 @@ export const createView = asyncHandler(async (req, res, next) => {
   targetId = mongoose.Types.ObjectId.createFromHexString(targetId);
   const ipAddress = req.ip || req.socket.remoteAddress;
   const userAgent = req.get("User-Agent") || "Unknown";
-  const viewerHash = crypto.createHash("sha256").update(ipAddress + userAgent).digest("hex");
+  // logged-in viewers are identified by account, so they count once per 6h window regardless of device/network
+  const viewerKey = userId ? `user:${userId}` : `anon:${ipAddress}|${userAgent}`;
+  const viewerHash = crypto.createHash("sha256").update(viewerKey).digest("hex");
   
   const view = new View({
     targetId,

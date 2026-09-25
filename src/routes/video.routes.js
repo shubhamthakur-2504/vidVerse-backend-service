@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upload } from "../middleWares/multer.middleWare.js";
+import { upload, videoUpload } from "../middleWares/multer.middleWare.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
 import { createView as view } from "../middleWares/view.middleWare.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
@@ -8,7 +8,7 @@ import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublis
 import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
 
 const router = Router();
-router.route("/upload").post(auth, upload.fields([
+router.route("/upload").post(auth, videoUpload.fields([
     {name:"video", maxCount:1},
     {name:"thumbnail", maxCount:1}
 ]), uploadVideo);

@@ -62,7 +62,7 @@ const generateAccessToken = async (user) => {
         const accessToken = await user.generateAccessToken()
         return accessToken
     } catch (error) {
-        throw apiError(500, "Something went wrong while generating access token")
+        throw new apiError(500, "Something went wrong while generating access token")
     }
 }
 
@@ -207,6 +207,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
         return res.status(200).cookie("accessToken", accessToken, option).json(new apiResponse(200, { accessToken }, "Access token refreshed successfully"))
     } catch (error) {
+        if (error instanceof apiError) throw error
+        // expired / malformed / wrongly signed token: the client must log in again
+        if (error?.name === "TokenExpiredError" || error?.name === "JsonWebTokenError") {
+            throw new apiError(401, "Invalid or expired refresh token")
+        }
         throw new apiError(500, "Something went wrong while refreshing access token")
     }
 })

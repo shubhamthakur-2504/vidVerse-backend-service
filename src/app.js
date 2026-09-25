@@ -38,7 +38,7 @@ app.use(cors({
 //common middleware
 app.use(express.json({limit:'20kb'}));
 app.use(express.urlencoded({extended:true,limit:'20kb'}));
-app.use(express.static('public'));
+// public/ only holds public/temps (in-flight uploads, thumbnails, HLS work files) — never serve it
 app.use(cookieParser());
 
 //routes

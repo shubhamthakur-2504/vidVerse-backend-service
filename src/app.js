@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
+import multer from 'multer';
+import { apiError } from './utils/apiError.js';
 
 //import Routes
 import healthCheckRouter from './routes/healthCheck.routes.js';
@@ -49,14 +52,51 @@ app.use("/api/v1/subscription",subscriptionRouter);
 app.use("/api/v1/reaction",reaction);
 
 
+// map known library errors to client errors; anything else unexpected is a 500
+const normalizeError = (err) => {
+    if (err instanceof apiError) {
+        return { statusCode: err.statusCode, message: err.message, errors: err.errors || [] }
+    }
+    if (err instanceof mongoose.Error.ValidationError) {
+        return { statusCode: 400, message: "Validation failed", errors: Object.values(err.errors).map(e => e.message) }
+    }
+    if (err instanceof mongoose.Error.CastError || err?.name === "BSONError") {
+        return { statusCode: 400, message: "Invalid id or value", errors: [] }
+    }
+    if (err?.code === 11000) {
+        return { statusCode: 409, message: `${Object.keys(err.keyValue || {}).join(", ") || "Resource"} already exists`, errors: [] }
+    }
+    if (err?.name === "JsonWebTokenError" || err?.name === "TokenExpiredError") {
+        return { statusCode: 401, message: "Invalid or expired token", errors: [] }
+    }
+    if (err instanceof multer.MulterError) {
+        return { statusCode: err.code === "LIMIT_FILE_SIZE" ? 413 : 400, message: err.message, errors: [] }
+    }
+    if (err?.type === "entity.parse.failed") {
+        return { statusCode: 400, message: "Malformed JSON body", errors: [] }
+    }
+    if (err?.message === "Not allowed by CORS") {
+        return { statusCode: 403, message: err.message, errors: [] }
+    }
+    if (err?.type === "entity.too.large") {
+        return { statusCode: 413, message: "Request body too large", errors: [] }
+    }
+    // unexpected error: log the details, never send internals to the client
+    console.error("Unhandled error:", err); //to be removed after adding logs logger
+    return { statusCode: 500, message: "Internal Server Error", errors: [] }
+}
+
 // error handler
 app.use((err, req, res, next) => {
-    const statusCode = err.statusCode || 500;
+    if (res.headersSent) {
+        return next(err);
+    }
+    const { statusCode, message, errors } = normalizeError(err);
     res.status(statusCode).json({
         success: false,
         statusCode,
-        message: err.message || "Internal Server Error",
-        errors: err.errors || [],
+        message,
+        errors,
     });
 });
 

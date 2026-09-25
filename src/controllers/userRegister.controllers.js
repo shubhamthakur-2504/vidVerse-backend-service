@@ -233,58 +233,56 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 })
 
 
-// change avatar
-const changeAvatar = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id)
-    const avatarLocal = req.files?.avatar?.[0]?.path
+// replace a user image (avatar / cover): upload new -> save url -> delete old
+// the old asset is only deleted after the new url is saved, so a failure never leaves the user without an image
+const replaceUserImage = async (userId, localPath, fileType, urlField) => {
+    const user = await User.findById(userId)
     if (!user) {
+        deleteLocalFile(localPath)
         throw new apiError(404, "User not found")
     }
+
+    const uploaded = await uploadOnCloudinary(localPath, fileType)
+    if (!uploaded) {
+        throw new apiError(500, "something went wrong while uploading")
+    }
+
+    let updatedUser
+    try {
+        updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: { [urlField]: uploaded.url } },
+            { new: true, select: "-password -refreshToken" }
+        )
+    } catch (error) {
+        await deleteFromCloudinary(uploaded.public_id)
+        throw new apiError(500, "something went wrong while saving the image")
+    }
+
+    const oldUrl = user[urlField]
+    if (oldUrl) {
+        await deleteFromCloudinary(extractPublicId(oldUrl))
+    }
+    return updatedUser
+}
+
+// change avatar
+const changeAvatar = asyncHandler(async (req, res) => {
+    const avatarLocal = req.files?.avatar?.[0]?.path
     if (!avatarLocal) {
         throw new apiError(400, "Avatar is required")
     }
-    const avatar = await uploadOnCloudinary(avatarLocal, "avatar")
-    if (!avatar) {
-        throw new apiError(500, "something went wrong while uploading")
-    }
-    const publicId = extractPublicId(user.avatarUrl)
-    await deleteFromCloudinary(publicId)
-    const updatedUser = await User.findByIdAndUpdate(
-        req.user._id,
-        {
-            $set: {
-                avatar: avatar
-            }
-        }, {
-        new: true, select: "-password -refreshToken"
-    }
-    )
+    const updatedUser = await replaceUserImage(req.user._id, avatarLocal, "avatar", "avatarUrl")
     return res.status(200).json(new apiResponse(200, { updatedUser }, "Avatar changed successfully"))
 })
 
 // change cover
 const changeCover = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id)
     const coverLocal = req.files?.cover?.[0]?.path
-    if (!user) {
-        throw new apiError(404, "User not found")
-    }
     if (!coverLocal) {
         throw new apiError(400, "Cover is required")
     }
-    const cover = await uploadOnCloudinary(coverLocal, "cover")
-    if (!cover) {
-        throw new apiError(500, "something went wrong while uploading")
-    }
-    const publicId = extractPublicId(user.coverImageUrl)
-    await deleteFromCloudinary(publicId)
-    const updatedUser = await User.findOneAndUpdate(req.user._id, {
-        $set: {
-            cover: cover
-        },
-    }, {
-        new: true, select: '-password -refreshToken'
-    })
+    const updatedUser = await replaceUserImage(req.user._id, coverLocal, "cover", "coverImageUrl")
     return res.status(200).json(new apiResponse(200, { updatedUser }, "Cover changed successfully"))
 })
 

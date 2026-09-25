@@ -79,8 +79,8 @@ typings/
 # Prisma
 prisma/migrations/
 
-# Docker
-Dockerfile
+# One-off local scripts (may contain credentials, never commit)
+scripts/backfill-categories.js
 
 # SvelteKit build output
 .svelte-kit

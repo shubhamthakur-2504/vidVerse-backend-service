@@ -3,7 +3,16 @@ import { DB_NAME } from "../constants.js";
 
 export const connectDB = async () => {
     try {
-        const connection = await mongoose.connect(`${process.env.MONGODB_URL}${DB_NAME}?retryWrites=true&w=majority`, {
+        const rawUrl = (process.env.MONGODB_URL || '').trim();
+        if (!rawUrl) {
+            throw new Error('MONGODB_URL is not defined in environment');
+        }
+
+        const [base, query] = rawUrl.split('?');
+        const cleanedBase = base.replace(/\/?$/, '');
+        const mongoUrl = `${cleanedBase}/${DB_NAME}${query ? `?${query}` : ''}`;
+
+        const connection = await mongoose.connect(mongoUrl, {
             ssl: true,
             tls: true,
             tlsInsecure: false,

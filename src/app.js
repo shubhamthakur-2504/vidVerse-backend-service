@@ -16,7 +16,10 @@ import reaction from './routes/like.routes.js';
 
 const app = express();
 
-app.set('trust proxy', true);
+// only trust X-Forwarded-For from proxies we actually run behind; `true` would let any client spoof req.ip
+// TRUST_PROXY: unset = no proxy, a number = hops (e.g. 1 behind one load balancer), or an express value like "loopback"
+const trustProxy = process.env.TRUST_PROXY?.trim();
+app.set('trust proxy', !trustProxy ? false : /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
 // CORS: support multiple origins from env (comma-separated)
 const allowedOrigins = process.env.CLIENT_URLS
     ? process.env.CLIENT_URLS.split(',').map(url => url.trim())

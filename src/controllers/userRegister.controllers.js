@@ -37,21 +37,18 @@ function deleteLocalFile(filePath) {
 
 //generate refresh and access token
 const generateRefreshAndAccessToken = async (userId) => {
+    const user = await User.findById(userId)
+    if (!user) {
+        throw new apiError(404, "User not found")
+    }
     try {
-        const user = await User.findById(userId)
-
-        if (!user) {
-            throw new apiError(404, "User not found")
-        }
+        // generateRefreshToken also stores the token on the user and saves it
         const refreshToken = await user.generateRefreshToken()
-        const accessToken = await user.generateAccessToken()
-
-        user.refreshToken = refreshToken
-        await user.save({ validateBeforeSave: false })
-
+        const accessToken = user.generateAccessToken()
         return { refreshToken, accessToken }
     } catch (error) {
-        return new apiError(500, "Something went wrong while generating refresh and access token")
+        // must throw, not return: callers destructure the result
+        throw new apiError(500, "Something went wrong while generating refresh and access token")
     }
 }
 

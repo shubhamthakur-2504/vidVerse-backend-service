@@ -14,4 +14,8 @@ const  tweetSchema = new Schema({
     }
 },{timestamps:true});
 
+// feed newest first (cursor: createdAt + _id) and a user's own tweets
+tweetSchema.index({ createdAt: -1, _id: -1 });
+tweetSchema.index({ owner: 1, createdAt: -1 });
+
 export const Tweet = mongoose.model("Tweet",tweetSchema);

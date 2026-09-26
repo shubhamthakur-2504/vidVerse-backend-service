@@ -49,4 +49,9 @@ const videoSchema = new Schema({
 
 videoSchema.plugin(mongooseAggregatePaginate)
 
+// public feed (newest first, optionally per category) and "my videos"; createdAt + _id is the pagination cursor
+videoSchema.index({ status: 1, isPublished: 1, createdAt: -1, _id: -1 })
+videoSchema.index({ category: 1, status: 1, isPublished: 1, createdAt: -1, _id: -1 })
+videoSchema.index({ owner: 1, createdAt: -1 })
+
 export const Video = mongoose.model("Video",videoSchema)

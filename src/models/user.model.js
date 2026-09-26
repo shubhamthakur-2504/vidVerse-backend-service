@@ -47,6 +47,9 @@ const userSchema = new Schema({
     },
 },{timestamps:true})
 
+// removing a deleted video from everyone's watch history ($pull) looks users up by this array
+userSchema.index({ watchHistory: 1 })
+
 userSchema.pre('save', async function (next) {
     if(!this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password,10)

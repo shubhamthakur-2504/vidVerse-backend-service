@@ -26,4 +26,8 @@ const playListSchema = new Schema({
     }
 },{timestamps:true});
 
+// a user's playlists, and the $pull of a deleted video from every playlist containing it
+playListSchema.index({ ownerId: 1 });
+playListSchema.index({ videos: 1 });
+
 export const PlayList = mongoose.model("PlayList",playListSchema);

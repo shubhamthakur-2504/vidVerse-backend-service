@@ -6,8 +6,11 @@ import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { lightVerifyJwtToken as lightauth } from "../middleWares/auth.middleWare.js";
 import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails, getMyVideos, getCategories, recordView} from "../controllers/video.controllers.js";
 import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
+import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 
 const router = Router();
+router.param("id", validateObjectIdParam)
+router.param("videoId", validateObjectIdParam)
 router.route("/upload").post(auth, videoUpload.fields([
     {name:"video", maxCount:1},
     {name:"thumbnail", maxCount:1}

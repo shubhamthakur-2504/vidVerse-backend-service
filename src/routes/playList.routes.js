@@ -3,8 +3,10 @@ import { createPlayList,addVideoToPlayList,removeVideoFromPlayList,updatePlayLis
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { upload } from "../middleWares/multer.middleWare.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
+import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 
 const router = Router() //need testing
+router.param("id", validateObjectIdParam)
 
 router.route("/create/:id").post(auth,determineOrigin,upload.single("thumbnail"),createPlayList)
 router.route("/addvideotoplaylist").post(auth,determineOrigin,upload.none(),addVideoToPlayList)

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { subscribe, unsubscribe, subscribersCount, isSubscribed, Mysubscriptions } from "../controllers/subscription.controllers.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
+import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 
 const router = Router() 
+router.param("id", validateObjectIdParam)
 
 router.route("/subscribe/:id").post(auth,subscribe)
 router.route("/unsubscribe/:id").delete(auth,unsubscribe)

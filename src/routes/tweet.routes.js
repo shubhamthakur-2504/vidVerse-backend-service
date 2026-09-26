@@ -6,8 +6,10 @@ import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { lightVerifyJwtToken as lightauth } from "../middleWares/auth.middleWare.js";
 import { createTweet, deleteTweet, updateTweet, getAllTweets, getTweetDetails } from "../controllers/tweet.controllers.js";
 import { createComment, deleteComment, editComment, getAllComments, getCommentDetails, createrCommentDelete } from "../controllers/comment.controllers.js";
+import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 
 const router = Router()
+router.param("id", validateObjectIdParam)
 
 router.route("/getalltweet").get(getAllTweets)
 router.route("/getallcomment/:id").get(determineOrigin,getAllComments)

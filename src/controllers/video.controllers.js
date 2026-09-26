@@ -25,14 +25,17 @@ Ffmpeg.setFfprobePath(ffprobeStatic.path)
 
 
 // common functions
-const extractThumbnail = async (videoLocal, fileName) => {
+const extractThumbnail = async (videoLocal, fileName, atSeconds = 5) => {
     return new Promise( (resolve, reject) => {
 
         const thumbnailName = `thumbnail-${fileName}.jpg`
         const thumbnailLocal = path.resolve('./public/temps', thumbnailName)
 
         Ffmpeg(videoLocal).on('end', () => {
-            console.log("Thumbnail extracted"); //to be removed after adding logs logger
+            // ffmpeg reports success even when the timemark is past the end of the video and no frame was written
+            if (!fs.existsSync(thumbnailLocal)) {
+                return reject(new Error(`no frame at ${atSeconds}s`))
+            }
             resolve(thumbnailLocal)
         }).on('error', (err) => {
             console.log("Thumbnail extraction error::", err); //to be removed after adding logs logger
@@ -43,9 +46,15 @@ const extractThumbnail = async (videoLocal, fileName) => {
             filename: thumbnailName,
             
             size: '320x240',
-            timemarks: ["5"]
+            timemarks: [String(atSeconds)]
         })
     })
+}
+
+// delete a multer temp file; used when a request is rejected before the file is uploaded
+const removeTempFile = (filePath) => {
+    if (!filePath) return
+    fs.unlink(filePath, () => {})
 }
 
 const extractDuration = async (videoLocal) => {
@@ -72,76 +81,81 @@ const uploadVideo = asyncHandler(async (req, res) => {
     const user = req.user
     const videoLocal = req.files?.video?.[0]?.path
     const videoName = req.files?.video?.[0]?.filename
-    let thumbnailLocal = req.files?.thumbnail?.[0]?.path || null
-    let duration = 0
-    const title = req.body?.title
-    const description = req.body?.description || "Discription for this video is not provided"
+    const uploadedThumbnailLocal = req.files?.thumbnail?.[0]?.path || null
+    const title = req.body?.title?.trim()
+    const description = req.body?.description?.trim() || ""
     const category = req.body?.category || "General"
 
-    if(!user){
-        throw new apiError(401,"Unauthorized")
+    // every rejection before the Cloudinary upload must remove the multer temp files
+    const reject = (statusCode, message) => {
+        removeTempFile(videoLocal)
+        removeTempFile(uploadedThumbnailLocal)
+        throw new apiError(statusCode, message)
     }
-    
+
     if(!videoLocal){
-        throw new apiError(400,"Video is required")
+        reject(400,"Video is required")
     }
     if(!title){
-        throw new apiError(400,"Title is required")
+        reject(400,"Title is required")
     }
+    if(!Video.schema.path("category").enumValues.includes(category)){
+        reject(400,"Invalid category")
+    }
+
+    // a file ffprobe cannot read is not a playable video
+    let duration
     try {
-        if (!thumbnailLocal) {
-            thumbnailLocal = await extractThumbnail(videoLocal, videoName);
-        }
-        duration = await extractDuration(videoLocal);
+        duration = Number(await extractDuration(videoLocal)) || 0
     } catch (error) {
-        console.error("FFmpeg error:", error); //to be removed after adding logs logger
-        duration = 0; // Provide a default duration to avoid crashes
-    }
-    
-
-    const videoUrl = await uploadOnCloudinary(videoLocal,"video")
-    const thumbnailUrl = await uploadOnCloudinary(thumbnailLocal,"thumbnail")
-
-    if(!videoUrl || !thumbnailUrl){
-        throw new apiError(500,"Something went wrong while uploading")
+        reject(400,"Could not read the video file")
     }
 
-    // const session = await mongoose.startSession()  //session only works in cluster mode not on local mode
-    // session.startTransaction()
-    
+    let thumbnailLocal = uploadedThumbnailLocal
+    if (!thumbnailLocal) {
+        try {
+            // 5s in, or halfway through clips shorter than 10s
+            thumbnailLocal = await extractThumbnail(videoLocal, videoName, Math.min(5, duration / 2))
+        } catch (error) {
+            reject(422,"Could not generate a thumbnail from this video, please upload one")
+        }
+    }
+
+    // uploadOnCloudinary removes the local file whether it succeeds or fails
+    const videoAsset = await uploadOnCloudinary(videoLocal,"video")
+    if(!videoAsset){
+        removeTempFile(thumbnailLocal)
+        throw new apiError(500,"Something went wrong while uploading the video")
+    }
+    const thumbnailAsset = await uploadOnCloudinary(thumbnailLocal,"thumbnail")
+    if(!thumbnailAsset){
+        await deleteFromCloudinary(videoAsset.public_id,"video")
+        throw new apiError(500,"Something went wrong while uploading the thumbnail")
+    }
+
+    // create the document and schedule processing before responding, so a failure can still be rolled back
+    let video = null
     try {
-        const video = await Video.create({
-            videoFileUrl:videoUrl?.url,
-            thumbnailUrl:thumbnailUrl?.url,
+        video = await Video.create({
+            videoFileUrl:videoAsset.url,
+            thumbnailUrl:thumbnailAsset.url,
             title:title,
             description:description,
             duration:duration,
             category:category,
             owner:user._id
-        }) //in cluster using session use create([{params},{params}],{session})
-        
-        const uploadedVideo = await Video.findById(video._id).populate("owner","userName")
-
-        // await session.commitTransaction() //cluster mode
-
-        if(!uploadedVideo){
-            throw new apiError(500,"Something went wrong while uploading")
-        }
-        res.status(200).json(new apiResponse(200,uploadedVideo,"Video uploaded successfully"))
-
-        // Schedule the job to process video chunks
-        await agenda.schedule('in 10 seconds', 'process video chunks', { videoId: uploadedVideo._id });
-        console.log('Video processing job scheduled'); //to be removed after adding logs logger
+        })
+        await agenda.schedule('in 10 seconds', 'process video chunks', { videoId: video._id })
     } catch (error) {
-        console.log("error while creating video",error);
-        // await session.abortTransaction() //cluster mode
-        if (videoUrl?.public_id) await deleteFromCloudinary(videoUrl?.public_id,"video")
-        if (thumbnailUrl?.public_id) await deleteFromCloudinary(thumbnailUrl?.public_id)
-        throw new apiError(500,"Something went wrong while uploading video and thumbnail were deleted")
-    }finally{ 
-        // await session.endSession() //cluster mode
+        console.log("error while creating video",error); //to be removed after adding logs logger
+        if (video) await Video.deleteOne({ _id: video._id })
+        await deleteFromCloudinary(videoAsset.public_id,"video")
+        await deleteFromCloudinary(thumbnailAsset.public_id)
+        throw new apiError(500,"Something went wrong while saving the video")
     }
 
+    const uploadedVideo = await Video.findById(video._id).populate("owner","userName")
+    return res.status(200).json(new apiResponse(200,uploadedVideo,"Video uploaded successfully"))
 } )
 
 // delete video
@@ -352,12 +366,6 @@ const toggleIsPublished = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200,video,"Video status toggled successfully"))
 })
 
-
-// delete a multer temp file; used when a request is rejected before the file is uploaded
-const removeTempFile = (filePath) => {
-    if (!filePath) return
-    fs.unlink(filePath, () => {})
-}
 
 const updateVideoDetails = asyncHandler(async (req, res) => {
     const { videoId } = req.params

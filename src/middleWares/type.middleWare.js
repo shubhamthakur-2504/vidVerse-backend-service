@@ -23,3 +23,9 @@ export const determineOrigin = asyncHandler(
         next()
     }
 )
+
+// v2 routers state the resource type explicitly instead of guessing it from the url
+export const withType = (type) => (req, res, next) => {
+    req.type = type
+    next()
+}

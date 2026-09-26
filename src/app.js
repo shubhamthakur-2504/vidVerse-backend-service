@@ -18,6 +18,7 @@ import tweetRouter from './routes/tweet.routes.js'
 import playListRouter from './routes/playList.routes.js';
 import subscriptionRouter from './routes/subscription.routes.js';
 import reaction from './routes/like.routes.js';
+import v2Router from './routes/v2/index.js';
 import { apiLimiter } from './middleWares/rateLimit.middleWare.js';
 
 const app = express();
@@ -65,6 +66,16 @@ app.use(cookieParser());
 
 //routes
 app.use("/api", apiLimiter);
+
+// v2: resource-oriented api used by the frontend
+app.use("/api/v2", v2Router);
+
+// v1: kept as-is for existing clients, marked deprecated (RFC 9745) with a pointer to its successor
+app.use("/api/v1", (req, res, next) => {
+    res.setHeader("Deprecation", "true");
+    res.setHeader("Link", '</api/v2>; rel="successor-version"');
+    next();
+});
 app.use("/api/v1/healthcheck",healthCheckRouter);
 app.use("/api/v1/user",userRouter);
 app.use("/api/v1/videos",videoRouter);

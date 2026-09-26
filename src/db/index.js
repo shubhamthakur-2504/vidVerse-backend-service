@@ -7,10 +7,9 @@ export const connectDB = async () => {
     try {
         const mongoUrl = mongoUrlFor(DB_NAME);
 
+        // TLS comes from the connection string (mongodb+srv:// or ?tls=true / ?ssl=true, as Atlas urls have),
+        // so a local MongoDB without TLS (docker, CI) works too
         const connection = await mongoose.connect(mongoUrl, {
-            ssl: true,
-            tls: true,
-            tlsInsecure: false,
             serverSelectionTimeoutMS: 30000,
         });
         logger.info({ host: connection.connection.host, db: connection.connection.db.databaseName }, "mongodb connected")

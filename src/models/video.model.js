@@ -1,5 +1,4 @@
 import mongoose, {Schema} from "mongoose";
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const videoSchema = new Schema({
     videoFileUrl:{
@@ -46,7 +45,6 @@ const videoSchema = new Schema({
     }   
 },{timestamps:true})
 
-videoSchema.plugin(mongooseAggregatePaginate)
 
 // public feed (newest first, optionally per category) and "my videos"; createdAt + _id is the pagination cursor
 videoSchema.index({ status: 1, isPublished: 1, createdAt: -1, _id: -1 })

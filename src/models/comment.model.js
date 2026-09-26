@@ -1,5 +1,4 @@
 import mongoose, {Schema} from "mongoose";
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const commentSchema = new Schema({
     content:{
@@ -20,7 +19,6 @@ const commentSchema = new Schema({
     }
 },{timestamps:true});
 
-commentSchema.plugin(mongooseAggregatePaginate);
 
 // comments of a video / tweet, newest first (cursor: createdAt + _id)
 commentSchema.index({ videoId: 1, createdAt: -1, _id: -1 });

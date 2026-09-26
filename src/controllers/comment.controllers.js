@@ -70,7 +70,7 @@ const deleteComment = asyncHandler(async (req, res) =>{
         if (!deletedComment) {
             throw new apiError(500, "Failed to delete the comment");
         }
-        res.status(200).json(new apiResponse(200,"Comment deleted successfully"))
+        res.status(200).json(new apiResponse(200,{ _id: commentId },"Comment deleted successfully"))
     } catch (error) {
         throw new apiError(500,"Something went wrong while deleting comment")
     }
@@ -195,7 +195,7 @@ const createrCommentDelete = asyncHandler(async (req, res) => {
     if(!deletedComment){
         throw new apiError(500,"Something went wrong")
     }
-    res.status(200).json(new apiResponse(200,"Comment deleted successfully"))
+    res.status(200).json(new apiResponse(200,{ _id: commentId },"Comment deleted successfully"))
     
 }) 
 

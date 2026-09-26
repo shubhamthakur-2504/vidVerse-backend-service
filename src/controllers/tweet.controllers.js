@@ -65,7 +65,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
         if(!deletedTweet){
             throw new apiError(500,"Something went wrong while deleting tweet")
         }
-        res.status(200).json(new apiResponse(200,"Tweet deleted successfully"))
+        res.status(200).json(new apiResponse(200,{ _id: tweetId },"Tweet deleted successfully"))
     } catch (error) {
         throw new apiError(500,"Something went wrong while deleting tweet")
     }

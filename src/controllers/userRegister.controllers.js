@@ -114,7 +114,7 @@ const registerUser = asyncHandler(async (req, res) => {
             throw new apiError(500, "Something went wrong while registering user")
         }
 
-        return res.status(201).json(new apiResponse(201, "User registered successfully", createdUser))
+        return res.status(201).json(new apiResponse(201, createdUser, "User registered successfully"))
     } catch (error) {
         if (avatar?.public_id) await deleteFromCloudinary(avatar?.public_id)
         if (cover?.public_id) await deleteFromCloudinary(cover?.public_id)
@@ -177,7 +177,7 @@ const logout = asyncHandler(async (req, res) => {
     })
     const option = authCookieOptions({ withExpiry: false })
 
-    return res.status(200).clearCookie("accessToken", option).clearCookie("refreshToken", option).json(new apiResponse(200, "User logged out successfully"))
+    return res.status(200).clearCookie("accessToken", option).clearCookie("refreshToken", option).json(new apiResponse(200, null, "User logged out successfully"))
 })
 
 //refresh access token
@@ -232,7 +232,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     }
     user.password = newPassword
     await user.save({ validateBeforeSave: false })
-    return res.status(200).json(new apiResponse(200, "Password changed successfully"))
+    return res.status(200).json(new apiResponse(200, null, "Password changed successfully"))
 })
 
 

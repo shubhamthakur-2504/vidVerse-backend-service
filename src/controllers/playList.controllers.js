@@ -82,7 +82,7 @@ const deletePlayList = asyncHandler(async (req, res) => {
         if(playList.exclusiveThumbnail){
             await deleteFromCloudinary(extractPublicId(playList.thumbnailUrl),"thumbnail")
         }
-        res.status(200).json(new apiResponse(200,"Playlist deleted successfully"))
+        res.status(200).json(new apiResponse(200,{ _id: playListId },"Playlist deleted successfully"))
     } catch (error) {
         throw new apiError(500,"Something went wrong while deleting playlist")
     }

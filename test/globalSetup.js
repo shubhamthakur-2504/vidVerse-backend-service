@@ -4,7 +4,8 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 let mongod;
 
 export async function setup({ provide }) {
-    mongod = await MongoMemoryServer.create();
+    // generous start-up allowance: the default 10s is too tight on a busy machine
+    mongod = await MongoMemoryServer.create({ instance: { launchTimeout: 60000 } });
     provide("mongoUri", mongod.getUri());
 }
 

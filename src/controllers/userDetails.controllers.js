@@ -25,73 +25,63 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
 
 
 const getWatchHistory = asyncHandler(async (req, res) => {
+    // unwind with the array index so the result keeps history order (most recent first);
+    // a plain $lookup on the array would return videos in collection order
     const watchHistory = await User.aggregate([
-        {
-            $match: {
-                _id: req.user?._id
-            }
-        },
+        { $match: { _id: req.user._id } },
+        { $project: { watchHistory: 1 } },
+        { $unwind: { path: "$watchHistory", includeArrayIndex: "position" } },
         {
             $lookup: {
-                from: "Video",
+                from: "videos",
                 localField: "watchHistory",
                 foreignField: "_id",
-                as: "watchHistory",
+                as: "video",
                 pipeline: [
+                    { $match: { isPublished: true, status: "ready" } },
                     {
-                        $match:{
-                            isPublished:true
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner"
                         }
                     },
-                    {
-                        $lookup:{
-                            from:"User",
-                            localField:"owner",
-                            foreignField:"_id",
-                            as:"owner"
-                        },
-                    },
-                    {
-                        $unwind:"$owner"
-                    },
+                    { $unwind: "$owner" },
                     getCreatedAtDiffField(),
                     {
-                        $project:{
-                            videoFileUrl:1,
-                            thumbnailUrl:1,
-                            title:1,
-                            views:1,
-                            duration:1,
-                            isPublished:1,
-                            createdAt:1,
-                            createdAtDiff:1,
-                            owner:{
-                                userName:1,
-                                avatarUrl:1
+                        $project: {
+                            videoFileUrl: 1,
+                            thumbnailUrl: 1,
+                            title: 1,
+                            views: 1,
+                            duration: 1,
+                            category: 1,
+                            createdAt: 1,
+                            createdAtDiff: 1,
+                            owner: {
+                                _id: 1,
+                                userName: 1,
+                                fullName: 1,
+                                avatarUrl: 1
                             }
                         }
                     }
                 ]
-            },
-            
-        }
+            }
+        },
+        // videos deleted or unpublished since they were watched drop out here
+        { $unwind: "$video" },
+        { $sort: { position: 1 } },
+        { $replaceRoot: { newRoot: "$video" } }
     ])
 
-    if (!watchHistory.length) {
-        // If user is not found in DB, return 401 (unauthorized)
-        return res.status(401).json(new apiResponse(401, null, "User session invalid. Please log in again."));
-    }
-
-    watchHistory.forEach( video =>{
-        video.watchHistory.forEach( videoDetail => {
-
-            videoDetail.relativeTime = formatRelativeTime(videoDetail.createdAtDiff)
-
-            delete videoDetail.createdAtDiff
-        })
+    watchHistory.forEach(video => {
+        video.relativeTime = formatRelativeTime(video.createdAtDiff)
+        delete video.createdAtDiff
     })
 
-    return res.status(200).json(new apiResponse(200, watchHistory[0].watchHistory, "watch history fetched successfully")) //watchHistory[0] testing 
+    return res.status(200).json(new apiResponse(200, watchHistory, "watch history fetched successfully"))
 })
 
 

@@ -457,8 +457,35 @@ const getCategories = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200, sorted, "Categories fetched successfully"))
 })
 
-// the view itself is stored by the view middleware; this only ends the request
+const WATCH_HISTORY_LIMIT = 200
+
+// the view itself is stored by the view middleware; this adds the video to a logged-in viewer's history
 const recordView = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    if (req.user && mongoose.isValidObjectId(videoId)) {
+        const id = mongoose.Types.ObjectId.createFromHexString(videoId)
+        try {
+            const watchable = await Video.exists({ _id: id, isPublished: true, status: "ready" })
+            if (watchable) {
+                // one atomic update: move the video to the front, drop its older entry, cap the list
+                await User.updateOne({ _id: req.user._id }, [{
+                    $set: {
+                        watchHistory: {
+                            $slice: [{
+                                $concatArrays: [
+                                    [id],
+                                    { $filter: { input: { $ifNull: ["$watchHistory", []] }, cond: { $ne: ["$$this", id] } } }
+                                ]
+                            }, WATCH_HISTORY_LIMIT]
+                        }
+                    }
+                }])
+            }
+        } catch (error) {
+            // history is best-effort; never fail the view request because of it
+            console.error("watch history update failed::", error); //to be removed after adding logs logger
+        }
+    }
     return res.status(204).end()
 })
 

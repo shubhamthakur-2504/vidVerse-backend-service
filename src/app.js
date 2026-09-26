@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { logger } from './utils/logger.js';
 import { pinoHttp } from 'pino-http';
 import { randomUUID } from 'crypto';
+import helmet from 'helmet';
 
 //import Routes
 import healthCheckRouter from './routes/healthCheck.routes.js';
@@ -35,6 +36,9 @@ app.use(pinoHttp({
     customLogLevel: (req, res, err) => (err || res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info"),
     autoLogging: { ignore: (req) => req.url === "/api/v1/healthcheck" },
 }));
+
+// security headers (nosniff, HSTS, frameguard, no x-powered-by, ...); the API only serves JSON, so the defaults fit
+app.use(helmet());
 
 // CORS: support multiple origins from env (comma-separated)
 const allowedOrigins = config.clientUrls;

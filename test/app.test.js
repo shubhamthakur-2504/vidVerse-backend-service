@@ -9,6 +9,15 @@ describe("app basics", () => {
         expect(res.body.success).toBe(true);
     });
 
+    it("sends security headers and a request id, and hides the framework", async () => {
+        const res = await request(app).get("/api/v1/healthcheck").set("X-Request-Id", "trace-1");
+        expect(res.headers["x-content-type-options"]).toBe("nosniff");
+        expect(res.headers["strict-transport-security"]).toMatch(/max-age=/);
+        expect(res.headers["x-frame-options"]).toBe("SAMEORIGIN");
+        expect(res.headers["x-powered-by"]).toBeUndefined();
+        expect(res.headers["x-request-id"]).toBe("trace-1");
+    });
+
     it("rejects a malformed JSON body with 400", async () => {
         const res = await request(app).post("/api/v1/user/login").set("Content-Type", "application/json").send("{bad");
         expect(res.status).toBe(400);

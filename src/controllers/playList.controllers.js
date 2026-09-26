@@ -220,11 +220,9 @@ const getPlayList = asyncHandler(async (req, res) => {
 
 const getAllPlayList = asyncHandler(async (req, res) => {
     const userId = req.user._id
-    const playlists = await PlayList.find({ownerId:userId})
-    if (playlists.length === 0) {
-        throw new apiError(404, "No playlists found for this user");
-    }
-    res.status(200).json(new apiResponse(200,playlists))
+    // having no playlists is an empty list, not an error
+    const playlists = await PlayList.find({ownerId:userId}).sort({ updatedAt: -1 })
+    res.status(200).json(new apiResponse(200,playlists,"Playlists fetched successfully"))
 })
 
 export { createPlayList, addVideoToPlayList, removeVideoFromPlayList, updatePlayList, getPlayList, getAllPlayList, deletePlayList}

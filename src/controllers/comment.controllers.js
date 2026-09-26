@@ -5,6 +5,7 @@ import { apiResponse } from "../utils/apiResponse.js";
 import { Video } from "../models/video.model.js";
 import { Tweet } from "../models/tweet.model.js";
 import { Comment } from "../models/comment.model.js";
+import { Like } from "../models/like.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, isEdited } from "../utils/utils.js";
 import { logger } from "../utils/logger.js";
 import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
@@ -256,4 +257,25 @@ const getCommentDetails = asyncHandler(async (req, res) => {
     }
 })
 
-export{createComment, deleteComment, getAllComments, editComment, createrCommentDelete, getCommentDetails}
+// v2: one delete endpoint for both cases: the comment's author, or the owner of the video / post it is on
+const removeComment = asyncHandler(async (req, res) => {
+    const comment = await Comment.findById(req.params.id)
+    if(!comment){
+        throw new apiError(404,"Comment not found")
+    }
+    let allowed = comment.userId.equals(req.user._id)
+    if (!allowed) {
+        const target = comment.videoId
+            ? await Video.findById(comment.videoId).select("owner")
+            : await Tweet.findById(comment.tweetId).select("owner")
+        allowed = Boolean(target?.owner.equals(req.user._id))
+    }
+    if (!allowed) {
+        throw new apiError(403,"Unauthorized to delete this comment")
+    }
+    await Comment.deleteOne({ _id: comment._id })
+    await Like.deleteMany({ targetType: "Comment", targetId: comment._id })
+    return res.status(200).json(new apiResponse(200,{ _id: comment._id },"Comment deleted successfully"))
+})
+
+export{createComment, deleteComment, getAllComments, editComment, createrCommentDelete, getCommentDetails, removeComment}

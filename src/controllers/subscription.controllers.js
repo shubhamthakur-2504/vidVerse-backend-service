@@ -108,4 +108,22 @@ const Mysubscriptions = asyncHandler(async (req, res) => {
     }
 })
 
-export { subscribe, unsubscribe, subscribersCount, isSubscribed, Mysubscriptions }
+// v2: PUT is idempotent, so subscribing twice is a success rather than a 409
+const putSubscription = asyncHandler(async (req, res) => {
+    const channelId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
+    if (req.user._id.equals(channelId)) {
+        throw new apiError(400, "Cannot subscribe to yourself");
+    }
+    if (!await User.exists({ _id: channelId })) {
+        throw new apiError(404, "Channel not found");
+    }
+    const result = await Subscription.updateOne(
+        { subscriber: req.user._id, channel: channelId },
+        { $setOnInsert: { subscriber: req.user._id, channel: channelId } },
+        { upsert: true }
+    )
+    const created = result.upsertedCount === 1
+    return res.status(created ? 201 : 200).json(new apiResponse(created ? 201 : 200, { channel: channelId, isSubscribed: true }, created ? "Subscribed successfully" : "Already subscribed"))
+})
+
+export { subscribe, unsubscribe, subscribersCount, isSubscribed, Mysubscriptions, putSubscription }

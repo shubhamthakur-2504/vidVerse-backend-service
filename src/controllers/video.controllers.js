@@ -392,6 +392,10 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     if(category){
         videoToUpdate.category = category
     }
+    // v2 folds the old visibility toggle into PATCH (v1's schema strips this field)
+    if(typeof req.body.isPublished === "boolean"){
+        videoToUpdate.isPublished = req.body.isPublished
+    }
 
     // upload the new thumbnail first, save, and only then delete the old one
     const oldThumbnail = videoToUpdate.thumbnailUrl
@@ -414,7 +418,7 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         await deleteFromCloudinary(extractPublicId(oldThumbnail))
     }
 
-    const updatedVideo = await Video.findById(videoId).select("videoFileUrl thumbnailUrl title description category")
+    const updatedVideo = await Video.findById(videoId).select("videoFileUrl thumbnailUrl title description category isPublished")
 
     res.status(200).json(new apiResponse(200,updatedVideo,"Video Details Updated Successfully"))
 })

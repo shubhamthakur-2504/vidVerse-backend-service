@@ -98,11 +98,12 @@ const getAllTweets = asyncHandler(async (req, res) => {
                 }
             },
         ])
-        const formattedTweets = tweets.map((tweet) => {
+        // formatRelativeTime takes the { days, months, years } diff computed in the pipeline, not a Date
+        const formattedTweets = tweets.map(({ createdAtDiff, ...tweet }) => {
             return {
                 ...tweet,
                 isEdited: isEdited(tweet.createdAt, tweet.updatedAt),
-                createdAt: formatRelativeTime(tweet.createdAt)
+                relativeTime: formatRelativeTime(createdAtDiff)
             }
         })
         res.status(200).json(new apiResponse(200,formattedTweets,"Tweets fetched successfully"))
@@ -153,7 +154,8 @@ const getTweetDetails = asyncHandler(async (req, res) => {
         }
         
         tweet[0].isEdited = isEdited(tweet[0].createdAt, tweet[0].updatedAt)
-        tweet[0].createdAt = formatRelativeTime(tweet[0].createdAt)
+        tweet[0].relativeTime = formatRelativeTime(tweet[0].createdAtDiff)
+        delete tweet[0].createdAtDiff
         delete tweet[0].updatedAt
         res.status(200).json(new apiResponse(200,tweet[0],"Tweet fetched successfully"))
     } catch (error) {

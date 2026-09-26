@@ -225,6 +225,7 @@ const getCommentDetails = asyncHandler(async (req, res) => {
                 $project:{
                     content:1,
                     createdAt:1,
+                    createdAtDiff:1,
                     updatedAt:1,
                     owner:{
                         userName:1,
@@ -237,7 +238,8 @@ const getCommentDetails = asyncHandler(async (req, res) => {
             throw new apiError(404,"Comment not found")
         }
         comment[0].editStatus = isEdited(comment[0].createdAt,comment[0].updatedAt)
-        comment[0].createdAt = formatRelativeTime(comment[0].createdAt)
+        comment[0].relativeTime = formatRelativeTime(comment[0].createdAtDiff)
+        delete comment[0].createdAtDiff
         delete comment[0].updatedAt
         res.status(200).json(new apiResponse(200,comment[0],"Comment found successfully"))
     } catch (error) {

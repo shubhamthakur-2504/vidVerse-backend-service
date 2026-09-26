@@ -8,6 +8,7 @@ import { Comment } from "../models/comment.model.js";
 import { Like } from "../models/like.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, isEdited } from "../utils/utils.js";
 import { logger } from "../utils/logger.js";
+import { reactionCountsLookup, viewerReactionLookup, countFrom, reactionOf } from "./watch.controllers.js";
 import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 // common functions
 const getModel= (type) => {
@@ -257,6 +258,46 @@ const getCommentDetails = asyncHandler(async (req, res) => {
     }
 })
 
+// v2: a page of comments where each one carries its like / dislike counts and the viewer's own reaction,
+// computed in the same aggregation (replaces one reaction request per comment on the client)
+const listCommentsWithStats = asyncHandler(async (req, res) => {
+    const type = req.type
+    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
+    const key = type === "video" ? "videoId" : "tweetId"
+    if (!await getModel(type).exists({ _id: id })) {
+        throw new apiError(404,`${type === "video" ? "Video" : "Post"} not found`)
+    }
+    const cursor = decodeCursor(req.query.cursor)
+    const { limit } = req.query
+    const viewerId = req.user?._id ?? null
+
+    const comments = await Comment.aggregate([
+        { $match: { [key]: id, ...afterCursor(cursor) } },
+        { $sort: NEWEST_FIRST },
+        { $limit: limit + 1 },
+        { $lookup: { from: "users", localField: "userId", foreignField: "_id", pipeline: [{ $project: { userName: 1, fullName: 1, avatarUrl: 1 } }], as: "author" } },
+        { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
+        reactionCountsLookup("Comment", "reactionCounts"),
+        viewerReactionLookup("Comment", viewerId, "viewerReaction"),
+        getCreatedAtDiffField(),
+    ])
+
+    const page = pageOf(comments, limit)
+    page.items = page.items.map((comment) => ({
+        _id: comment._id,
+        content: comment.content,
+        userId: comment.userId,
+        author: comment.author ?? null,
+        createdAt: comment.createdAt,
+        relativeTime: formatRelativeTime(comment.createdAtDiff),
+        editStatus: isEdited(comment.createdAt, comment.updatedAt),
+        likeCount: countFrom(comment.reactionCounts, true),
+        dislikeCount: countFrom(comment.reactionCounts, false),
+        viewerReaction: reactionOf(comment.viewerReaction),
+    }))
+    return res.status(200).json(new apiResponse(200, page, "Comments fetched successfully"))
+})
+
 // v2: one delete endpoint for both cases: the comment's author, or the owner of the video / post it is on
 const removeComment = asyncHandler(async (req, res) => {
     const comment = await Comment.findById(req.params.id)
@@ -278,4 +319,4 @@ const removeComment = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200,{ _id: comment._id },"Comment deleted successfully"))
 })
 
-export{createComment, deleteComment, getAllComments, editComment, createrCommentDelete, getCommentDetails, removeComment}
+export{createComment, deleteComment, getAllComments, editComment, createrCommentDelete, getCommentDetails, removeComment, listCommentsWithStats}

@@ -22,3 +22,7 @@ export const updateVideoV2Schema = {
 };
 
 export const channelVideosSchema = { query: z.object(pageQuery(24)) };
+
+export const relatedVideosSchema = {
+    query: z.object({ limit: z.coerce.number().int().min(1).max(24).default(12) }),
+};

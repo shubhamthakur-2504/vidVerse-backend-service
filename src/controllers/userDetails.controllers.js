@@ -2,54 +2,25 @@ import { apiResponse } from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import {apiError} from "../utils/apiError.js";
 import {User} from "../models/user.model.js"
+import { Subscription } from "../models/subscription.model.js";
 import { getCreatedAtDiffField, formatRelativeTime } from "../utils/utils.js";
 import mongoose from "mongoose";
 
 
 const getUserChannelDetails = asyncHandler(async (req, res) => {
-    
-    const channelDetails = await User.aggregate([
-        {
-            $match: {
-                _id: req.user?._id //new mongoose.ObjectId(req.user?._id) gives error as it is already objectId of mongo
-            }
-        },
-        {
-            $lookup:{
-                from:"Subscribe",
-                localField:"_id",
-                foreignField:"channel",
-                as:"subscribers"
-            }
-        },
-        {
-            $lookup:{
-                from:"Subscribe",
-                localField:"_id",
-                foreignField:"subscriber",
-                as:"Mysubscriptions"
-            }
-        },
-        {
-            $addFields:{
-                subscribersCount:{$size:"$subscribers"},
-                subscriptionsCount:{$size:"$Mysubscriptions"}
-            }
-        },
-        {
-            $project:{
-                userName:1,
-                subscribersCount:1,
-                subscriptionsCount:1
-            }
-        }
+    const userId = req.user._id
+    // two indexed counts instead of $lookup-ing every subscription document just to take its size
+    const [subscribersCount, subscriptionsCount] = await Promise.all([
+        Subscription.countDocuments({ channel: userId }),
+        Subscription.countDocuments({ subscriber: userId })
     ])
 
-    if (channelDetails.length === 0) {
-        throw new apiError(500, "Something went wrong while fetching channel details")
-    }
-
-    return res.status(200).json(new apiResponse(200, channelDetails[0], "channel details fetched successfully"))
+    return res.status(200).json(new apiResponse(200, {
+        _id: userId,
+        userName: req.user.userName,
+        subscribersCount,
+        subscriptionsCount
+    }, "channel details fetched successfully"))
 })
 
 

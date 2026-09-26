@@ -7,6 +7,7 @@ import { extractPublicId } from "../utils/utils.js";
 import JWT from "jsonwebtoken"
 import { config } from "../config.js"
 import fs from "fs"
+import { logger } from "../utils/logger.js";
 
 // common function
 function validateEmail(email) {
@@ -30,9 +31,8 @@ function authCookieOptions({ withExpiry = true } = {}) {
 function deleteLocalFile(filePath) {
     try {
         fs.unlinkSync(filePath)
-        console.log("File deleted from local")
     } catch (error) {
-        console.log(error)
+        logger.warn({ err: error, filePath }, "could not delete local file")
     }
 }
 

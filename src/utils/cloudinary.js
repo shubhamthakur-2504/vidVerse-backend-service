@@ -5,6 +5,7 @@ import { pipeline } from "stream/promises";
 import axios from "axios";
 import path from 'path';
 import { config } from "../config.js";
+import { logger } from "./logger.js";
 // Configuration
 cloudinary.config({
     cloud_name: config.cloudinary.cloudName,
@@ -31,10 +32,9 @@ const uploadLargeVideo = (filePath, folder) => {
 
 const uploadOnCloudinary = async function (localFilePath, fileType) {
     try {
-        console.log(localFilePath);
 
         if (!localFilePath) {
-            console.log("File not found");  //to be removed after adding logs logger
+            logger.warn("cloudinary helper called without a file")
             return null
 
         }
@@ -53,16 +53,14 @@ const uploadOnCloudinary = async function (localFilePath, fileType) {
         } else if (fileType === 'image') {
             folder = 'images'
         }
-        console.log("uploading");
 
         if (resourceType === 'video') {
             const stats = await fs.stat(localFilePath);
             const fileSizeInMB = stats.size / (1024 * 1024);
 
             if (fileSizeInMB > 99) {
-                console.log("Using upload_large for chunked upload.");
                 const res = await uploadLargeVideo(localFilePath, folder);
-                console.log("Uploaded:", res.secure_url);
+                logger.debug({ url: res.secure_url }, "large video uploaded")
                 if (res.secure_url) await fs.unlink(localFilePath);
                 res.url = res.secure_url;
                 return res;
@@ -76,18 +74,18 @@ const uploadOnCloudinary = async function (localFilePath, fileType) {
         }
         )
 
-        console.log("File uploaded on Cloudinary. File Src : " + res.secure_url); //to be removed after adding logs logger
+        logger.debug({ url: res.secure_url }, "file uploaded")
         if (res && res.secure_url) {
             try {
                 await fs.unlink(localFilePath);
             } catch (err) {
-                console.error("Error deleting local file:", err);
+                logger.warn({ err, localFilePath }, "could not delete local file")
             }
         }
         res.url = res.secure_url;
         return res
     } catch (error) {
-        console.log("Cloudinary upload error::", error); //to be removed after adding logs logger
+        logger.error({ err: error, localFilePath }, "cloudinary upload failed")
         await fs.unlink(localFilePath)
         return null
     }
@@ -96,7 +94,7 @@ const uploadOnCloudinary = async function (localFilePath, fileType) {
 const deleteFromCloudinary = async function (publicId, fileType = 'image') {
     try {
         if (!publicId) {
-            console.log("File not found"); //to be removed after adding logs logger
+            logger.warn("cloudinary helper called without a file")
             return null
         }
 
@@ -108,13 +106,13 @@ const deleteFromCloudinary = async function (publicId, fileType = 'image') {
         }
 
         if (deleteResponse.result === "ok") {
-            console.log("File deleted from Cloudinary. File Src : " + publicId); // to be removed after adding logs logger
+            logger.debug({ publicId }, "file deleted from cloudinary")
         } else {
-            console.log("Failed to delete file from Cloudinary. File Src : " + publicId); //to be removed after adding logs logger
+            logger.warn({ publicId, result: deleteResponse.result }, "cloudinary delete did not succeed")
         }
         return deleteResponse
     } catch (error) {
-        console.log("Cloudinary delete error::", error); //to be removed after adding logs logger
+        logger.error({ err: error, publicId }, "cloudinary delete failed")
     }
 }
 
@@ -131,7 +129,7 @@ const downloadFromCloudinary = async (publicURL, localPath) => {
         return localPath;
     } catch (err) {
         try { await fs.unlink(localPath); } catch (_) {}
-        console.error("Download pipeline error:", err);
+        logger.error({ err, publicURL }, "download from cloudinary failed")
         throw err;
     }
 }

@@ -5,6 +5,9 @@ import mongoose from 'mongoose';
 import multer from 'multer';
 import { apiError } from './utils/apiError.js';
 import { config } from './config.js';
+import { logger } from './utils/logger.js';
+import { pinoHttp } from 'pino-http';
+import { randomUUID } from 'crypto';
 
 //import Routes
 import healthCheckRouter from './routes/healthCheck.routes.js';
@@ -20,6 +23,19 @@ const app = express();
 // only trust X-Forwarded-For from proxies we actually run behind; `true` would let any client spoof req.ip
 // TRUST_PROXY: unset = no proxy, a number = hops (e.g. 1 behind one load balancer), or an express value like "loopback"
 app.set('trust proxy', config.trustProxy);
+
+// one log line per request with a request id (also returned as X-Request-Id); req.log carries the id into handlers
+app.use(pinoHttp({
+    logger,
+    genReqId: (req, res) => {
+        const id = req.headers["x-request-id"] || randomUUID();
+        res.setHeader("X-Request-Id", id);
+        return id;
+    },
+    customLogLevel: (req, res, err) => (err || res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info"),
+    autoLogging: { ignore: (req) => req.url === "/api/v1/healthcheck" },
+}));
+
 // CORS: support multiple origins from env (comma-separated)
 const allowedOrigins = config.clientUrls;
 app.use(cors({
@@ -54,7 +70,7 @@ app.use("/api/v1/reaction",reaction);
 
 
 // map known library errors to client errors; anything else unexpected is a 500
-const normalizeError = (err) => {
+const normalizeError = (err, log) => {
     if (err instanceof apiError) {
         return { statusCode: err.statusCode, message: err.message, errors: err.errors || [] }
     }
@@ -83,7 +99,7 @@ const normalizeError = (err) => {
         return { statusCode: 413, message: "Request body too large", errors: [] }
     }
     // unexpected error: log the details, never send internals to the client
-    console.error("Unhandled error:", err); //to be removed after adding logs logger
+    log.error({ err }, "unhandled error")
     return { statusCode: 500, message: "Internal Server Error", errors: [] }
 }
 
@@ -92,7 +108,7 @@ app.use((err, req, res, next) => {
     if (res.headersSent) {
         return next(err);
     }
-    const { statusCode, message, errors } = normalizeError(err);
+    const { statusCode, message, errors } = normalizeError(err, req.log ?? logger);
     res.status(statusCode).json({
         success: false,
         statusCode,

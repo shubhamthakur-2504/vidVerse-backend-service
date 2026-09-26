@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { DB_NAME } from "../constants.js";
 import { mongoUrlFor } from "../config.js";
+import { logger } from "../utils/logger.js";
 
 export const connectDB = async () => {
     try {
@@ -12,11 +13,10 @@ export const connectDB = async () => {
             tlsInsecure: false,
             serverSelectionTimeoutMS: 30000,
         });
-        console.log(`db: mongoose connected to ${connection.connection.host}`);
-        console.log(`db: mongoose connected to ${connection.connection.db.databaseName}`);
+        logger.info({ host: connection.connection.host, db: connection.connection.db.databaseName }, "mongodb connected")
 
     } catch (error) {
-        console.log("db: mongoose connection error::", error);
+        logger.fatal({ err: error }, "mongodb connection failed")
         process.exit(1);
     }
 }

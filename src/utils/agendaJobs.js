@@ -8,12 +8,14 @@ import { Comment } from "../models/comment.model.js";
 import { Tweet } from "../models/tweet.model.js";
 import { View } from "../models/view.model.js";
 import { extractPublicId } from "./utils.js";
+import { logger } from "./logger.js";
 
 const MAX_PROCESSING_ATTEMPTS = 3
 
 agenda.define("process video chunks", async (job) => {
     const { videoId, attempt = 1 } = job.attrs.data;
-    console.log(`Processing video chunks for video ID: ${videoId} (attempt ${attempt})`); //to be removed after adding logs logger
+    const log = logger.child({ job: "process video chunks", videoId: String(videoId), attempt });
+    log.info("processing video")
 
     const video = await Video.findById(videoId);
     if (!video || video.status === "ready") return;
@@ -40,11 +42,11 @@ agenda.define("process video chunks", async (job) => {
             return;
         }
         await deleteFromCloudinary(extractPublicId(originalVideoUrl), "video"); // the original upload is a video asset, not the default image type
-        console.log(`Video ${videoId} is ready`); //to be removed after adding logs logger
+        log.info("video is ready")
     } catch (error) {
-        console.error(`Error processing video chunks for ${videoId}:`, error); //to be removed after adding logs logger
+        log.error({ err: error }, "video processing failed")
         // drop any segments uploaded before the failure so a retry starts clean
-        await deleteCloudinaryFolder(`videos/${videoId}`).catch((err) => console.error("segment cleanup failed:", err));
+        await deleteCloudinaryFolder(`videos/${videoId}`).catch((err) => log.error({ err }, "segment cleanup failed"));
         if (attempt < MAX_PROCESSING_ATTEMPTS) {
             await agenda.schedule(`in ${attempt * 2} minutes`, "process video chunks", { videoId, attempt: attempt + 1 });
         } else {
@@ -59,13 +61,11 @@ agenda.define("process video chunks", async (job) => {
 
 
 agenda.define("validate like", async (job) => {
-    console.log('Validating likes job started'); //to be removed after adding logs logger
     const { likeId } = job.attrs.data;
-    console.log(`Validating like ID: ${likeId}`); //to be removed after adding logs logger
     try {
         const like = await Like.findById(likeId);
         if (!like) {
-            console.log(`Like with ID ${likeId} not found`); //to be removed after adding logs logger
+            logger.debug({ job: "validate like", likeId }, "like already removed")
             return;
         }
         const targetId = like.targetId;
@@ -76,13 +76,12 @@ agenda.define("validate like", async (job) => {
         else if (targetType === "Comment") targetModel = Comment;
         const target = await targetModel.findById(targetId);
         if (!target) {
-            console.log(`${targetType} with ID ${targetId} not found. Deleting like.`); //to be removed after adding logs logger
+            logger.info({ job: "validate like", likeId, targetType, targetId }, "target missing, deleting like")
             await Like.findByIdAndDelete(likeId);
             return;
         }
-        console.log(`Like with ID ${likeId} is valid`); //to be removed after adding logs logger
     } catch (error) {
-        console.error('Error validating like:', error); //to be removed after adding logs logger
+        logger.error({ job: "validate like", likeId, err: error }, "like validation failed")
     }
 })
 // in next update for like validation
@@ -90,7 +89,6 @@ agenda.define("validate like", async (job) => {
 // make a collection of invalid likes and delete them in bulk
 
 agenda.define("count views", async (job) => {
-    console.log('Counting views job started');
     try {
         // Aggregate unprocessed views
         const viewCounts = await View.aggregate([
@@ -106,7 +104,7 @@ agenda.define("count views", async (job) => {
             { $project: { targetId: "$_id.targetId", targetType: "$_id.targetType", count: 1, viewIds: 1, _id: 0 } }
         ]);
 
-        console.log(`Found ${viewCounts.length} targets with new views`);
+        logger.debug({ job: "count views", targets: viewCounts.length }, "aggregated new views")
 
         const bulkOps = { Video: [], Tweet: [] };
         let allViewIds = [];
@@ -123,7 +121,7 @@ agenda.define("count views", async (job) => {
                     }
                 });
             } else {
-                console.log(`Unknown targetType: ${targetType}`);
+                logger.warn({ job: "count views", targetType }, "unknown view target type")
             }
         }
 
@@ -131,7 +129,7 @@ agenda.define("count views", async (job) => {
         for (const type of ["Video", "Tweet"]) {
             if (bulkOps[type].length > 0) {
                 await (type === "Video" ? Video : Tweet).bulkWrite(bulkOps[type]);
-                console.log(`Updated ${bulkOps[type].length} ${type} documents`);
+                logger.info({ job: "count views", type, updated: bulkOps[type].length }, "view counts updated")
             }
         }
 
@@ -143,9 +141,8 @@ agenda.define("count views", async (job) => {
             );
         }
 
-        console.log('Views counting job completed');
 
     } catch (error) {
-        console.error('Error counting views:', error);
+        logger.error({ job: "count views", err: error }, "view counting failed")
     }
 });

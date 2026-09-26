@@ -18,6 +18,7 @@ import { Like } from "../models/like.model.js";
 import { View } from "../models/view.model.js";
 import { PlayList } from "../models/playList.model.js";
 import agenda from "../db/agendaSetup.js";
+import { logger } from "../utils/logger.js";
 
 // common config
 Ffmpeg.setFfmpegPath(ffmpegStatic)
@@ -38,7 +39,7 @@ const extractThumbnail = async (videoLocal, fileName, atSeconds = 5) => {
             }
             resolve(thumbnailLocal)
         }).on('error', (err) => {
-            console.log("Thumbnail extraction error::", err); //to be removed after adding logs logger
+            logger.warn({ err, videoLocal }, "thumbnail extraction failed")
             reject(err)
         }).screenshots({
             count: 1,
@@ -61,10 +62,9 @@ const extractDuration = async (videoLocal) => {
     return new Promise((resolve, reject) => {
         Ffmpeg(videoLocal).ffprobe((err, data) => {
             if(err){
-                console.log("Video duration extraction error::", err); //to be removed after adding logs logger
+                logger.warn({ err, videoLocal }, "video duration extraction failed")
                 reject(err)
             }else{
-                console.log("Video duration extracted"); //to be removed after adding logs logger
                 resolve(data.format.duration)
             }
         })
@@ -147,7 +147,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
         })
         await agenda.schedule('in 10 seconds', 'process video chunks', { videoId: video._id })
     } catch (error) {
-        console.log("error while creating video",error); //to be removed after adding logs logger
+        logger.error({ err: error }, "failed to save uploaded video")
         if (video) await Video.deleteOne({ _id: video._id })
         await deleteFromCloudinary(videoAsset.public_id,"video")
         await deleteFromCloudinary(thumbnailAsset.public_id)
@@ -195,7 +195,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
         deleteFromCloudinary(extractPublicId(video.thumbnailUrl)),
     ])
     mediaCleanup.filter(r => r.status === "rejected").forEach(r =>
-        console.error(`media cleanup failed for deleted video ${video._id}::`, r.reason) //to be removed after adding logs logger
+        logger.error({ err: r.reason, videoId: video._id }, "media cleanup failed for deleted video")
     )
 
     return res.status(200).json(new apiResponse(200, { _id: video._id }, "Video deleted successfully"))
@@ -343,7 +343,7 @@ const getVideoDetails = asyncHandler(async (req, res) => {
             // Don't send another response
             return;
         }
-        console.error("Error fetching video details:", error);
+        logger.error({ err: error, videoId }, "failed to fetch video details")
         return res.status(500).json(new apiResponse(500, null, "Something went wrong while fetching video details"));
     }
 });
@@ -506,7 +506,7 @@ const recordView = asyncHandler(async (req, res) => {
             }
         } catch (error) {
             // history is best-effort; never fail the view request because of it
-            console.error("watch history update failed::", error); //to be removed after adding logs logger
+            logger.warn({ err: error, videoId }, "watch history update failed")
         }
     }
     return res.status(204).end()

@@ -6,6 +6,7 @@ import { Video } from "../models/video.model.js";
 import { Tweet } from "../models/tweet.model.js";
 import { Comment } from "../models/comment.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, isEdited } from "../utils/utils.js";
+import { logger } from "../utils/logger.js";
 // common functions
 const getModel= (type) => {
     if (type === 'video') {
@@ -244,7 +245,7 @@ const getCommentDetails = asyncHandler(async (req, res) => {
         res.status(200).json(new apiResponse(200,comment[0],"Comment found successfully"))
     } catch (error) {
         if (error instanceof apiError) throw error
-        console.log(error);
+        logger.error({ err: error, commentId: req.params.id }, "failed to get comment details")
         
         throw new apiError(500,"Something went wrong while getting comment")
     }

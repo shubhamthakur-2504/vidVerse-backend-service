@@ -12,8 +12,6 @@ export const createView = asyncHandler(async (req, res, next) => {
   const userId = req.user?._id || null;
 
   if (!mongoose.isValidObjectId(targetId)) {
-    console.log("hit invalid id"); //to be removed after adding logs logger
-    
     return next();
   }
   
@@ -41,7 +39,7 @@ export const createView = asyncHandler(async (req, res, next) => {
       // duplicate view, ignore
       next();
     } else {
-      console.log("View creation error::", error); //to be removed after adding logs logger
+      req.log.error({ err: error }, "view creation failed")
       throw new apiError(500, "Internal server error while creating view");
     }
   }

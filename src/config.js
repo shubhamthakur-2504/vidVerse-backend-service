@@ -35,6 +35,9 @@ const envSchema = z.object({
 
     MAX_IMAGE_SIZE_MB: positiveNumber(10),
     MAX_VIDEO_SIZE_MB: positiveNumber(500),
+
+    // default: silent in tests, info otherwise
+    LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -51,6 +54,7 @@ export const config = Object.freeze({
     isProduction: env.NODE_ENV === "production",
     isDevelopment: env.NODE_ENV === "development",
     port: env.PORT,
+    logLevel: env.LOG_LEVEL ?? (env.NODE_ENV === "test" ? "silent" : "info"),
     clientUrls: env.CLIENT_URLS.split(",").map((url) => url.trim()).filter(Boolean),
     mongodbUrl: env.MONGODB_URL,
     trustProxy: !env.TRUST_PROXY ? false : /^\d+$/.test(env.TRUST_PROXY) ? Number(env.TRUST_PROXY) : env.TRUST_PROXY,

@@ -4,34 +4,35 @@ import { connectDB } from "./db/index.js";
 import agenda from "./db/agendaSetup.js";
 import mongoose from "mongoose";
 import './utils/agendaJobs.js';
+import { logger } from "./utils/logger.js";
+
 const PORT = config.port
+let server
 
 connectDB().then(async () => {
     await agenda.start();
-    console.log("Agenda started successfully");
+    logger.info("agenda started");
 
     // start the agenda jobs
     agenda.every("5 minutes", "count views")
 
-
     // start the express server
-    app.listen(PORT, () => {
-        console.log(`server is running on port ${PORT}`);
+    server = app.listen(PORT, () => {
+        logger.info({ port: PORT, env: config.env }, "server listening");
     })
 }).catch((error) => {
-    console.log("src: mongoose connection error::", error);
+    logger.fatal({ err: error }, "startup failed");
+    process.exit(1);
 })
-process.on("SIGTERM", async () => {
+
+// stop accepting requests, let running jobs unlock, then close the database
+const shutdown = async (signal) => {
+    logger.info({ signal }, "shutting down");
+    await new Promise((resolve) => (server ? server.close(resolve) : resolve()));
     await agenda.stop();
-    console.log("Agenda gracefully stopped");
     await mongoose.connection.close();
-    console.log("MongoDB connection closed");
+    logger.info("shutdown complete");
     process.exit(0);
-});
-process.on("SIGINT", async () => {
-    await agenda.stop();
-    console.log("Agenda stopped via SIGINT");
-    await mongoose.connection.close();
-    console.log("MongoDB connection closed");
-    process.exit(0);
-});
+};
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

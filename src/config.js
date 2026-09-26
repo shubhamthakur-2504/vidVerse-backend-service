@@ -23,8 +23,9 @@ const envSchema = z.object({
     JWT_ACCESS_TOKEN_EXPIRY: z.string().trim().min(1).default("15m"),
     JWT_REFRESH_SECRET: required("JWT_REFRESH_SECRET"),
     JWT_REFRESH_TOKEN_EXPIRY: z.string().trim().min(1).default("7d"),
-    // lifetime of the auth cookies, in days
-    JWT_COOKIE_EXPIRY: positiveNumber(7),
+    // SameSite for the auth cookies. "lax" works when the browser reaches the API through the frontend's
+    // same-origin /api proxy; use "none" only if the browser calls the API on another site directly.
+    COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),
 
     CLOUDINARY_CLOUD_NAME: required("CLOUDINARY_CLOUD_NAME"),
     CLOUDINARY_API_KEY: required("CLOUDINARY_API_KEY"),
@@ -63,7 +64,11 @@ export const config = Object.freeze({
         accessExpiry: env.JWT_ACCESS_TOKEN_EXPIRY,
         refreshSecret: env.JWT_REFRESH_SECRET,
         refreshExpiry: env.JWT_REFRESH_TOKEN_EXPIRY,
-        cookieExpiryMs: env.JWT_COOKIE_EXPIRY * 24 * 60 * 60 * 1000,
+    }),
+    cookies: Object.freeze({
+        sameSite: env.COOKIE_SAME_SITE,
+        // SameSite=None is only accepted by browsers together with Secure
+        secure: env.NODE_ENV === "production" || env.COOKIE_SAME_SITE === "none",
     }),
     cloudinary: Object.freeze({
         cloudName: env.CLOUDINARY_CLOUD_NAME,

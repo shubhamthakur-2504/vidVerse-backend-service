@@ -4,8 +4,8 @@ import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js"
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 import { extractPublicId } from "../utils/utils.js";
-import JWT from "jsonwebtoken"
-import { config } from "../config.js"
+import { createSession, rotateSession, revokeSession, revokeOtherSessions } from "../services/session.service.js";
+import { setAuthCookies, clearAuthCookies } from "../utils/authCookies.js";
 import fs from "fs"
 import { logger } from "../utils/logger.js";
 
@@ -14,53 +14,11 @@ function validateEmail(email) {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
 }
-// cookie options shared by login, refresh and logout so set-cookie and clear-cookie always match
-// (browsers reject SameSite=None without Secure, so dev uses Lax)
-function authCookieOptions({ withExpiry = true } = {}) {
-    const isProduction = config.isProduction
-    const options = {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? "none" : "lax"
-    }
-    if (withExpiry) {
-        options.expires = new Date(Date.now() + config.jwt.cookieExpiryMs)
-    }
-    return options
-}
 function deleteLocalFile(filePath) {
     try {
         fs.unlinkSync(filePath)
     } catch (error) {
         logger.warn({ err: error, filePath }, "could not delete local file")
-    }
-}
-
-//generate refresh and access token
-const generateRefreshAndAccessToken = async (userId) => {
-    const user = await User.findById(userId)
-    if (!user) {
-        throw new apiError(404, "User not found")
-    }
-    try {
-        // generateRefreshToken also stores the token on the user and saves it
-        const refreshToken = await user.generateRefreshToken()
-        const accessToken = user.generateAccessToken()
-        return { refreshToken, accessToken }
-    } catch (error) {
-        // must throw, not return: callers destructure the result
-        throw new apiError(500, "Something went wrong while generating refresh and access token")
-    }
-}
-
-// generate access token
-const generateAccessToken = async (user) => {
-    try {
-        if (!user) return null
-        const accessToken = await user.generateAccessToken()
-        return accessToken
-    } catch (error) {
-        throw new apiError(500, "Something went wrong while generating access token")
     }
 }
 
@@ -155,63 +113,40 @@ const login = asyncHandler(async (req, res) => {
     if (!isPasswordValid) {
         throw new apiError(401, "Invalid credentials")
     }
-    const { refreshToken, accessToken } = await generateRefreshAndAccessToken(user._id)
+    const tokens = await createSession(user, req)
 
     // loading loged in user data
     const logedInUser = await User.findById(user._id).select("-password -refreshToken -__v -createdAt -updatedAt -watchHistory")
     if (!logedInUser) {
         throw new apiError(500, "Something went wrong while logging in user")
     }
-    const option = authCookieOptions()
 
     // sending response
-    return res.status(200).cookie("accessToken", accessToken, option).cookie("refreshToken", refreshToken, option).json(new apiResponse(200, { user: logedInUser }, "User logged in successfully"))
-
-
+    return setAuthCookies(res.status(200), tokens).json(new apiResponse(200, { user: logedInUser }, "User logged in successfully"))
 })
 
 //logout
 const logout = asyncHandler(async (req, res) => {
-    // $unset, not $set: undefined — Mongoose strips undefined values, which left the token valid
-    await User.findByIdAndUpdate(req.user._id, {
-        $unset: { refreshToken: 1 }
-    })
-    const option = authCookieOptions({ withExpiry: false })
+    // end this device's session only; other devices stay signed in
+    if (req.sessionId) {
+        await revokeSession(req.sessionId, req.user._id, "logout")
+    }
+    // tokens issued before sessions existed were stored on the user
+    await User.updateOne({ _id: req.user._id }, { $unset: { refreshToken: 1 } })
 
-    return res.status(200).clearCookie("accessToken", option).clearCookie("refreshToken", option).json(new apiResponse(200, null, "User logged out successfully"))
+    return clearAuthCookies(res.status(200)).json(new apiResponse(200, null, "User logged out successfully"))
 })
 
 //refresh access token
 const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.headers.authorization?.split(" ")[1]
-
-
     if (!incomingRefreshToken) {
         throw new apiError(401, "Refresh token is required")
     }
-    try {
-        const decodedToken = JWT.verify(incomingRefreshToken, config.jwt.refreshSecret)
-        const user = await User.findById(decodedToken?.id)
 
-        if (!user) {
-            throw new apiError(401, "Invalid refresh token")
-        }
-        if (user?.refreshToken !== incomingRefreshToken) {
-            throw new apiError(401, "Invalid refresh token")
-        }
-
-        const accessToken = await generateAccessToken(user)
-        const option = authCookieOptions()
-
-        return res.status(200).cookie("accessToken", accessToken, option).json(new apiResponse(200, { accessToken }, "Access token refreshed successfully"))
-    } catch (error) {
-        if (error instanceof apiError) throw error
-        // expired / malformed / wrongly signed token: the client must log in again
-        if (error?.name === "TokenExpiredError" || error?.name === "JsonWebTokenError") {
-            throw new apiError(401, "Invalid or expired refresh token")
-        }
-        throw new apiError(500, "Something went wrong while refreshing access token")
-    }
+    // rotates the refresh token (the old one stops working) and detects reuse of a stolen token
+    const tokens = await rotateSession(incomingRefreshToken, req)
+    return setAuthCookies(res.status(200), tokens).json(new apiResponse(200, { accessToken: tokens.accessToken }, "Access token refreshed successfully"))
 })
 
 
@@ -233,6 +168,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     }
     user.password = newPassword
     await user.save({ validateBeforeSave: false })
+    // a changed password must sign out every other device (this one stays signed in)
+    await revokeOtherSessions(user._id, req.sessionId, "password-change")
+    await User.updateOne({ _id: user._id }, { $unset: { refreshToken: 1 } })
     return res.status(200).json(new apiResponse(200, null, "Password changed successfully"))
 })
 

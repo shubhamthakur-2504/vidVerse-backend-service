@@ -31,12 +31,12 @@ describe("config", () => {
             CLIENT_URLS: " http://a.test , http://b.test,",
             TRUST_PROXY: "1",
             MAX_IMAGE_SIZE_MB: "2.5",
-            JWT_COOKIE_EXPIRY: undefined,
+            COOKIE_SAME_SITE: undefined,
         });
         expect(config.clientUrls).toEqual(["http://a.test", "http://b.test"]);
         expect(config.trustProxy).toBe(1);
         expect(config.uploads.maxImageBytes).toBe(Math.floor(2.5 * 1024 * 1024));
-        expect(config.jwt.cookieExpiryMs).toBe(7 * 24 * 60 * 60 * 1000);
+        expect(config.cookies).toEqual({ sameSite: "lax", secure: false });
         expect(Object.isFrozen(config)).toBe(true);
     });
 

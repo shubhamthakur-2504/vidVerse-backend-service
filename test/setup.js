@@ -9,7 +9,6 @@ process.env.JWT_ACCESS_SECRET = "test-access-secret";
 process.env.JWT_REFRESH_SECRET = "test-refresh-secret";
 process.env.JWT_ACCESS_TOKEN_EXPIRY = "15m";
 process.env.JWT_REFRESH_TOKEN_EXPIRY = "7d";
-process.env.JWT_COOKIE_EXPIRY = "7";
 process.env.CLOUDINARY_CLOUD_NAME = "test";
 process.env.CLOUDINARY_API_KEY = "test";
 process.env.CLOUDINARY_API_SECRET = "test";

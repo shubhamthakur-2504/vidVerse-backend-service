@@ -1,7 +1,5 @@
 import mongoose, {Schema} from "mongoose";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { config } from "../config.js";
 
 const userSchema = new Schema({
     userName:{
@@ -42,6 +40,7 @@ const userSchema = new Schema({
         required:[true,'Password is required'],
         trim:true
     },
+    // legacy: refresh token from before per-device sessions, migrated on first refresh
     refreshToken:{
         type:String
     },
@@ -59,22 +58,6 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password,this.password)
 }
-userSchema.methods.generateAccessToken = function(){
-    return jwt.sign({
-        id:this._id,
-        user:this.userName
-    },config.jwt.accessSecret,{expiresIn:config.jwt.accessExpiry})
-}
-userSchema.methods.generateRefreshToken= async function(){
-    
-    const token = jwt.sign({
-        id:this._id,
-        user:this.userName
-    },config.jwt.refreshSecret,{expiresIn:config.jwt.refreshExpiry})
-
-    this.refreshToken = token
-    await this.save()
-    return token
-}
+// access / refresh tokens are issued by services/session.service.js
 
 export const User = mongoose.model('User',userSchema)

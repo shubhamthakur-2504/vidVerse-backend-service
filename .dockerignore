@@ -1,7 +1,8 @@
 node_modules
 npm-debug.log*
 Dockerfile
-docker-compose.yml
+Dockerfile.dev
+docker-compose*.yml
 .git
 *.log
 .env
@@ -10,3 +11,5 @@ docker-compose.yml
 scripts/
 public/temps/*
 !public/temps/.gitkeep
+test/
+coverage/

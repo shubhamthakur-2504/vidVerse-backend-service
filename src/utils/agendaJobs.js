@@ -40,7 +40,7 @@ agenda.define("process video chunks", async (job) => {
             console.log('Video updated successfully'); //to be removed after adding logs logger
             const publicId = extractPublicId(orignalVideoUrl);
             console.log(`Deleting original video from Cloudinary with public ID: ${publicId}`); //to be removed after adding logs logger
-            await deleteFromCloudinary(publicId);
+            await deleteFromCloudinary(publicId, "video"); // the original upload is a video asset, not the default image type
             console.log('Deleted video from Cloudinary'); //to be removed after adding logs logger
             fs.unlinkSync(localPath); // Clean up local file
             console.log('Deleted local file'); //to be removed after adding logs logger

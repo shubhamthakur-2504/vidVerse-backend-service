@@ -359,7 +359,7 @@ const toggleIsPublished = asyncHandler(async (req, res) => {
         throw new apiError(404,"Video not found")
     }
     if(!video.owner.equals(req.user._id)){
-        throw new apiError(401,"Unauthorized")
+        throw new apiError(403,"Unauthorized to change this video")
     }
     video.isPublished = !video.isPublished
     await video.save({validateBeforeSave:false})

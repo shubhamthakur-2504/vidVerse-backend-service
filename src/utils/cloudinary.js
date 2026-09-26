@@ -190,4 +190,22 @@ const uploadVideoChunksToCloudinary = async (chunkPaths, manifestPath, videoId) 
         return null;
     }
 }
-export { uploadOnCloudinary, deleteFromCloudinary, downloadFromCloudinary, uploadVideoChunksToCloudinary };
+// delete every asset under a folder (e.g. the HLS segments + manifest in videos/<videoId>), then the folder itself
+// the admin API deletes at most 1000 assets per call and reports `partial` when more remain
+const deleteCloudinaryFolder = async (folder) => {
+    if (!folder) return
+    for (const resourceType of ["video", "raw", "image"]) {
+        for (let page = 0; page < 20; page++) {
+            const result = await cloudinary.api.delete_resources_by_prefix(`${folder}/`, { resource_type: resourceType })
+            if (!result?.partial) break
+        }
+    }
+    try {
+        await cloudinary.api.delete_folder(folder)
+    } catch (error) {
+        // the folder may not exist (e.g. the video was never processed)
+        if (error?.error?.http_code !== 404) throw error
+    }
+}
+
+export { uploadOnCloudinary, deleteFromCloudinary, downloadFromCloudinary, uploadVideoChunksToCloudinary, deleteCloudinaryFolder };

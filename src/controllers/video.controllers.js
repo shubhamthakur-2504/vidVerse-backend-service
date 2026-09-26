@@ -3,7 +3,7 @@ import { apiResponse } from "../utils/apiResponse.js";
 import { apiError } from "../utils/apiError.js";
 import { Video } from "../models/video.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, extractPublicId } from "../utils/utils.js";
-import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary, deleteCloudinaryFolder } from "../utils/cloudinary.js";
 import path from "path";
 import fs from "fs";
 import mongoose from "mongoose";
@@ -13,6 +13,10 @@ import ffmpegStatic from "ffmpeg-static";
 import ffprobe from "fluent-ffmpeg";
 import { Session } from "inspector/promises";
 import { User } from "../models/user.model.js";
+import { Comment } from "../models/comment.model.js";
+import { Like } from "../models/like.model.js";
+import { View } from "../models/view.model.js";
+import { PlayList } from "../models/playList.model.js";
 import agenda from "../db/agendaSetup.js";
 
 // common config
@@ -144,41 +148,43 @@ const uploadVideo = asyncHandler(async (req, res) => {
 const deleteVideo = asyncHandler(async (req, res) => {
     const videoId = req.params.videoId
     if (!mongoose.isValidObjectId(videoId)) {
-        return res.status(404).json(new apiResponse(404, null, "Video not found"));
+        throw new apiError(404, "Video not found")
     }
     const video = await Video.findById(videoId)
     if(!video){
         throw new apiError(404,"Video not found")
     }
-    const user = req.user._id
-    if(video.owner.toString() !== user.toString()){
-        throw new apiError(401,"Unauthorized")
+    if(!video.owner.equals(req.user._id)){
+        throw new apiError(403,"Unauthorized to delete this video")
     }
 
-    const videoPublicId = extractPublicId(video.videoFileUrl)
-    const thumbnailPublicId = extractPublicId(video.thumbnailUrl)
+    // 1. the video itself, so it disappears for users immediately
+    await Video.deleteOne({ _id: video._id })
 
-    // const session = await mongoose.startSession() //session only works in cluster mode not on local mode
-    // session.startTransaction //cluster mode
+    // 2. everything that references it
+    const commentIds = await Comment.find({ videoId: video._id }).distinct("_id")
+    await Promise.all([
+        Like.deleteMany({ targetType: "Video", targetId: video._id }),
+        Like.deleteMany({ targetType: "Comment", targetId: { $in: commentIds } }),
+        Comment.deleteMany({ videoId: video._id }),
+        View.deleteMany({ targetType: "Video", targetId: video._id }),
+        PlayList.updateMany({ videos: video._id }, { $pull: { videos: video._id } }),
+        User.updateMany({ watchHistory: video._id }, { $pull: { watchHistory: video._id } }),
+    ])
 
-    try {
-        await deleteFromCloudinary(videoPublicId,"video")
-        await deleteFromCloudinary(thumbnailPublicId)
-    
-        await Video.findByIdAndDelete(videoId) //in cluster mode pass session as second argument in object
+    // 3. media, best-effort: the DB is already consistent, so failures are logged instead of failing the request
+    //    - processed videos: HLS segments + manifest live in videos/<videoId>/
+    //    - unprocessed videos: videoFileUrl still points at the original upload
+    const mediaCleanup = await Promise.allSettled([
+        deleteCloudinaryFolder(`videos/${video._id}`),
+        video.status === "ready" ? Promise.resolve() : deleteFromCloudinary(extractPublicId(video.videoFileUrl), "video"),
+        deleteFromCloudinary(extractPublicId(video.thumbnailUrl)),
+    ])
+    mediaCleanup.filter(r => r.status === "rejected").forEach(r =>
+        console.error(`media cleanup failed for deleted video ${video._id}::`, r.reason) //to be removed after adding logs logger
+    )
 
-        // await session.commitTransaction //cluster mode
-
-        return res.status(200).json(new apiResponse(200,"Video deleted successfully"))
-    } catch (error) {
-        // await session.abortTransaction //cluster mode
-
-        console.log("error while deleting video",error); //to be removed after adding logs logger
-        
-        throw new apiError(500,"Something went wrong while deleting video")
-    }finally{
-        // await session.endSession //cluster mode
-    }
+    return res.status(200).json(new apiResponse(200, { _id: video._id }, "Video deleted successfully"))
 })
 
 //get all videos

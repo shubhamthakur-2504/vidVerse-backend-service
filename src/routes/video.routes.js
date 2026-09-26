@@ -8,6 +8,8 @@ import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublis
 import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
 import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 import { uploadLimiter } from "../middleWares/rateLimit.middleWare.js";
+import { validate } from "../middleWares/validate.middleWare.js";
+import { uploadVideoSchema, updateVideoSchema, listVideosSchema, commentSchema } from "../validators/index.js";
 
 const router = Router();
 router.param("id", validateObjectIdParam)
@@ -15,15 +17,15 @@ router.param("videoId", validateObjectIdParam)
 router.route("/upload").post(auth, uploadLimiter, videoUpload.fields([
     {name:"video", maxCount:1},
     {name:"thumbnail", maxCount:1}
-]), uploadVideo);
+]), validate(uploadVideoSchema), uploadVideo);
 
 router.route("/delete/:videoId").delete(auth, deleteVideo);
 router.route("/toggle/:videoId").patch(auth,toggleIsPublished);
-router.route("/update/:videoId").patch(auth,upload.single("thumbnail"),updateVideoDetails)
+router.route("/update/:videoId").patch(auth,upload.single("thumbnail"),validate(updateVideoSchema), updateVideoDetails)
 router.route("/getmyvideos").get(auth,getMyVideos)
 
 // unsecure routes for getting video details
-router.route("/getallvideos").get(getAllVideos)
+router.route("/getallvideos").get(validate(listVideosSchema), getAllVideos)
 router.route("/getcategories").get(getCategories)
 router.route("/getvideodetails/:videoId").get(lightauth, determineOrigin, getVideoDetails)
 // views are recorded by the browser player, not on details fetch: the details are fetched server-side
@@ -35,8 +37,8 @@ router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)
 
 
 // routes for comments
-router.route("/createcomment/:id").post(auth,determineOrigin,upload.none(),createComment)
-router.route("/editcomment/:id").patch(auth,determineOrigin,upload.none(),editComment)
+router.route("/createcomment/:id").post(auth,determineOrigin,upload.none(),validate(commentSchema), createComment)
+router.route("/editcomment/:id").patch(auth,determineOrigin,upload.none(),validate(commentSchema), editComment)
 router.route("/deletecomment/:id").delete(auth,determineOrigin,deleteComment)
 router.route("/creatercommentdelete/:id").delete(auth,determineOrigin,createrCommentDelete)
 

@@ -4,15 +4,17 @@ import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { upload } from "../middleWares/multer.middleWare.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
 import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
+import { validate } from "../middleWares/validate.middleWare.js";
+import { createPlaylistSchema, playlistVideoSchema, updatePlaylistSchema } from "../validators/index.js";
 
 const router = Router() //need testing
 router.param("id", validateObjectIdParam)
 
-router.route("/create/:id").post(auth,determineOrigin,upload.single("thumbnail"),createPlayList)
-router.route("/addvideotoplaylist").post(auth,determineOrigin,upload.none(),addVideoToPlayList)
-router.route("/removevideofromplaylist").post(auth,determineOrigin,upload.none(),removeVideoFromPlayList)
+router.route("/create/:id").post(auth,determineOrigin,upload.single("thumbnail"),validate(createPlaylistSchema), createPlayList)
+router.route("/addvideotoplaylist").post(auth,determineOrigin,upload.none(),validate(playlistVideoSchema), addVideoToPlayList)
+router.route("/removevideofromplaylist").post(auth,determineOrigin,upload.none(),validate(playlistVideoSchema), removeVideoFromPlayList)
 
-router.route("/updateplaylist/:id").patch(auth,determineOrigin,upload.single("thumbnail"),updatePlayList)
+router.route("/updateplaylist/:id").patch(auth,determineOrigin,upload.single("thumbnail"),validate(updatePlaylistSchema), updatePlayList)
 
 router.route("/getplaylist/:id").get(auth,determineOrigin,getPlayList)
 router.route("/getallplaylist").get(auth,determineOrigin,getAllPlayList)

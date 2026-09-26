@@ -8,6 +8,8 @@ import { refreshAccessToken } from "../controllers/userRegister.controllers.js";
 import { changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails, getCurrentUser } from "../controllers/userRegister.controllers.js"
 import { getWatchHistory, getUserChannelDetails } from "../controllers/userDetails.controllers.js";
 import { authLimiter } from "../middleWares/rateLimit.middleWare.js";
+import { validate } from "../middleWares/validate.middleWare.js";
+import { registerSchema, loginSchema, changePasswordSchema, updateAccountSchema } from "../validators/index.js";
 
 const router = Router()
 
@@ -15,18 +17,18 @@ const router = Router()
 router.route("/register").post(authLimiter, upload.fields([
     {name:"avatar", maxCount:1},
     {name:"cover", maxCount:1}
-]),userRegister)
+]),validate(registerSchema), userRegister)
 
-router.route("/login").post(authLimiter, login)
+router.route("/login").post(authLimiter, validate(loginSchema), login)
 
 router.route("/refreshaccess").post(refreshAccessToken)
 
 //secure routes
 router.route("/logout").post(auth,logout)
-router.route("/changepassword").patch(auth,authLimiter,changeCurrentPassword)
+router.route("/changepassword").patch(auth,authLimiter,validate(changePasswordSchema), changeCurrentPassword)
 router.route("/changeavatar").patch( auth, upload.fields([{name:"avatar", maxCount:1}]),changeAvatar)
 router.route("/changecover").patch(auth, upload.fields([{name:"cover", maxCount:1}]),changeCover)
-router.route("/updatedetails").patch(auth,updateAccountDetails)
+router.route("/updatedetails").patch(auth,validate(updateAccountSchema), updateAccountDetails)
 
 router.route("/getcurrentuser").get(auth,getCurrentUser)
 router.route("/getwatchhistory").get(auth,getWatchHistory)

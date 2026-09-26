@@ -8,13 +8,13 @@ import { createTweet, deleteTweet, updateTweet, getAllTweets, getTweetDetails } 
 import { createComment, deleteComment, editComment, getAllComments, getCommentDetails, createrCommentDelete } from "../controllers/comment.controllers.js";
 import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 import { validate } from "../middleWares/validate.middleWare.js";
-import { tweetSchema, commentSchema } from "../validators/index.js";
+import { tweetSchema, commentSchema, listTweetsSchema, listCommentsSchema } from "../validators/index.js";
 
 const router = Router()
 router.param("id", validateObjectIdParam)
 
-router.route("/getalltweet").get(getAllTweets)
-router.route("/getallcomment/:id").get(determineOrigin,getAllComments)
+router.route("/getalltweet").get(validate(listTweetsSchema), getAllTweets)
+router.route("/getallcomment/:id").get(determineOrigin,validate(listCommentsSchema), getAllComments)
 
 router.route("/gettweet/:id").get(lightauth, determineOrigin, view, getTweetDetails)
 router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)

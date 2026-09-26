@@ -4,6 +4,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import { Subscription } from "../models/subscription.model.js";
 import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
+import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 
 const subscribe = asyncHandler(async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
@@ -91,15 +92,16 @@ const isSubscribed = asyncHandler(async (req, res) => {
 })
 
 const Mysubscriptions = asyncHandler(async (req, res) => {
-    const page = Number(req.query.page) || 1
-    const limit = Number(req.query.limit) || 10
-    const skip = (page - 1) * limit
+    const cursor = decodeCursor(req.query.cursor)
+    const { limit } = req.query
     try {
-        const subscriptions = await Subscription.find({ subscriber: req.user._id }).skip(skip).limit(limit).populate('channel', 'userName')
-        return res.status(200).json(new apiResponse(200, subscriptions, "Subscriptions fetched successfully"))
-        // can use this for better frontend experience will refine it as per need in frontend
-        // const total = await Subscription.countDocuments({ subscriber: req.user._id })
-        // return res.status(200).json(new apiResponse(200, {subscriptions,pagination: {total,page,limit,pages: Math.ceil(total / limit)}}, "Subscriptions fetched successfully"))
+        // newest first, one page at a time (limit + 1 tells whether another page exists)
+        const subscriptions = await Subscription.find({ subscriber: req.user._id, ...afterCursor(cursor) })
+            .sort(NEWEST_FIRST)
+            .limit(limit + 1)
+            .populate('channel', 'userName fullName avatarUrl')
+            .lean()
+        return res.status(200).json(new apiResponse(200, pageOf(subscriptions, limit), "Subscriptions fetched successfully"))
 
     } catch (error) {
         throw new apiError(500,"Something went wrong while fetching subscriptions")

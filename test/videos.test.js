@@ -22,7 +22,8 @@ describe("video feed", () => {
 
         const res = await request(app).get("/api/v1/videos/getallvideos");
         expect(res.status).toBe(200);
-        expect(res.body.data.map((v) => v._id)).toEqual([String(visible._id)]);
+        expect(res.body.data.items.map((v) => v._id)).toEqual([String(visible._id)]);
+        expect(res.body.data.nextCursor).toBeNull();
     });
 });
 
@@ -34,12 +35,12 @@ describe("feed search (S7)", () => {
 
         const dot = await request(app).get("/api/v1/videos/getallvideos").query({ query: "a.b" });
         expect(dot.status).toBe(200);
-        expect(dot.body.data.map((v) => v.title)).toEqual(["a.b explained"]);
+        expect(dot.body.data.items.map((v) => v.title)).toEqual(["a.b explained"]);
 
         // an unbalanced "(" used to be an invalid regex and a 500
         const paren = await request(app).get("/api/v1/videos/getallvideos").query({ query: "(" });
         expect(paren.status).toBe(200);
-        expect(paren.body.data).toEqual([]);
+        expect(paren.body.data.items).toEqual([]);
     });
 });
 

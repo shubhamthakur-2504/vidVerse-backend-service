@@ -18,6 +18,7 @@ import { Like } from "../models/like.model.js";
 import { View } from "../models/view.model.js";
 import { PlayList } from "../models/playList.model.js";
 import agenda from "../db/agendaSetup.js";
+import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
 
 // common config
@@ -204,7 +205,8 @@ const deleteVideo = asyncHandler(async (req, res) => {
 //get all videos
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { category, query } = req.query;
+    const { category, query, limit } = req.query;
+    const cursor = decodeCursor(req.query.cursor);
     
     const matchStage = {
         isPublished: true,
@@ -224,10 +226,13 @@ const getAllVideos = asyncHandler(async (req, res) => {
         ];
     }
     
+    // newest first, one page at a time (limit + 1 tells whether another page exists)
     const videos = await Video.aggregate([
         {
-            $match: matchStage
+            $match: cursor ? { $and: [matchStage, afterCursor(cursor)] } : matchStage
         },
+        { $sort: NEWEST_FIRST },
+        { $limit: limit + 1 },
         {
             $lookup:{
                 from:"users",
@@ -259,21 +264,12 @@ const getAllVideos = asyncHandler(async (req, res) => {
             }
         }
     ])
-    if(!videos){
-        throw new apiError(500,"Something went wrong while fetching Videos")
-    }
-    if(videos.length === 0){
-        return res.status(200).json(new apiResponse(200,videos,"No videos found"))
-    }
-
-    videos.forEach(video => {
+    const page = pageOf(videos, limit)
+    page.items.forEach(video => {
         video.relativeTime = formatRelativeTime(video.createdAtDiff)
-
         delete video.createdAtDiff
-        
     })
-    videos.sort(() => Math.random() - 0.5);
-    return res.status(200).json(new apiResponse(200,videos,"Videos fetched successfully"))
+    return res.status(200).json(new apiResponse(200,page,"Videos fetched successfully"))
 })
 
 // videoDetails

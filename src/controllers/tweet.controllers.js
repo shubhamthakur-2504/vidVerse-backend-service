@@ -5,6 +5,7 @@ import { Tweet } from "../models/tweet.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited, canEdit } from "../utils/utils.js";
 import { uploadOnCloudinary,deleteFromCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
+import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 
 const createTweet = asyncHandler(async (req, res) => {
     const {content} = req.body
@@ -72,8 +73,14 @@ const deleteTweet = asyncHandler(async (req, res) => {
 })
 
 const getAllTweets = asyncHandler(async (req, res) => {
+    const cursor = decodeCursor(req.query.cursor)
+    const { limit } = req.query
     try {
+        // newest first, one page at a time (limit + 1 tells whether another page exists)
         const tweets = await Tweet.aggregate([
+            { $match: afterCursor(cursor) },
+            { $sort: NEWEST_FIRST },
+            { $limit: limit + 1 },
             {
                 $lookup: {
                     from: "users",
@@ -99,14 +106,15 @@ const getAllTweets = asyncHandler(async (req, res) => {
             },
         ])
         // formatRelativeTime takes the { days, months, years } diff computed in the pipeline, not a Date
-        const formattedTweets = tweets.map(({ createdAtDiff, ...tweet }) => {
+        const page = pageOf(tweets, limit)
+        page.items = page.items.map(({ createdAtDiff, ...tweet }) => {
             return {
                 ...tweet,
                 isEdited: isEdited(tweet.createdAt, tweet.updatedAt),
                 relativeTime: formatRelativeTime(createdAtDiff)
             }
         })
-        res.status(200).json(new apiResponse(200,formattedTweets,"Tweets fetched successfully"))
+        res.status(200).json(new apiResponse(200,page,"Tweets fetched successfully"))
     } catch (error) {
         throw new apiError(500,"Something went wrong while fetching tweets")
     }

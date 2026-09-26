@@ -9,7 +9,7 @@ import { createComment, deleteComment, editComment, getAllComments, createrComme
 import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 import { uploadLimiter } from "../middleWares/rateLimit.middleWare.js";
 import { validate } from "../middleWares/validate.middleWare.js";
-import { uploadVideoSchema, updateVideoSchema, listVideosSchema, commentSchema } from "../validators/index.js";
+import { uploadVideoSchema, updateVideoSchema, listVideosSchema, commentSchema, listCommentsSchema } from "../validators/index.js";
 
 const router = Router();
 router.param("id", validateObjectIdParam)
@@ -31,7 +31,7 @@ router.route("/getvideodetails/:videoId").get(lightauth, determineOrigin, getVid
 // views are recorded by the browser player, not on details fetch: the details are fetched server-side
 // by Next.js, which would make every visitor share the Next server's ip + user agent
 router.route("/:videoId/view").post(lightauth, determineOrigin, view, recordView)
-router.route("/getallcomments/:id").get(determineOrigin,getAllComments)
+router.route("/getallcomments/:id").get(determineOrigin,validate(listCommentsSchema), getAllComments)
 router.route("/getcommentdetail/:id").get(determineOrigin,getCommentDetails)
 
 

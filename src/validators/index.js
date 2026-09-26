@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { objectId, text, optionalText, optionalLongText, category, booleanLike, reactionTarget, userName, newPassword } from "./common.js";
+import { objectId, text, optionalText, optionalLongText, category, booleanLike, reactionTarget, userName, newPassword, pageQuery } from "./common.js";
 
 // ---- users ----
 export const registerSchema = {
@@ -60,15 +60,20 @@ export const listVideosSchema = {
     query: z.object({
         category: z.preprocess((value) => (value === "" ? undefined : value), category.optional()),
         query: optionalText("Search query", { max: 100 }),
+        ...pageQuery(24),
     }),
 };
 
 // ---- comments (videos and tweets) ----
+export const listCommentsSchema = { query: z.object(pageQuery(20)) };
+
 export const commentSchema = {
     body: z.object({ content: text("Comment", { max: 2000 }) }),
 };
 
 // ---- tweets ----
+export const listTweetsSchema = { query: z.object(pageQuery(20)) };
+
 export const tweetSchema = {
     body: z.object({ content: text("Content", { max: 500 }) }),
 };
@@ -81,12 +86,7 @@ export const reactionTargetBodySchema = { body: z.object({ targetType: reactionT
 export const reactionTargetQuerySchema = { query: z.object({ targetType: reactionTarget }) };
 
 // ---- subscriptions ----
-export const paginationSchema = {
-    query: z.object({
-        page: z.coerce.number().int().min(1).default(1),
-        limit: z.coerce.number().int().min(1).max(50).default(10),
-    }),
-};
+export const paginationSchema = { query: z.object(pageQuery(20)) };
 
 // ---- playlists ----
 export const createPlaylistSchema = {

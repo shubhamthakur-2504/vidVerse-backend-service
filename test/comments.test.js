@@ -11,7 +11,7 @@ describe("video comments", () => {
         const video = await createVideo(await createUser());
         const res = await request(app).get(`/api/v1/videos/getallcomments/${video._id}`);
         expect(res.status).toBe(200);
-        expect(res.body.data).toEqual([]);
+        expect(res.body.data).toEqual({ items: [], nextCursor: null });
     });
 
     it("creates a comment and lists it with the author", async () => {
@@ -23,9 +23,9 @@ describe("video comments", () => {
 
         const res = await request(app).get(`/api/v1/videos/getallcomments/${video._id}`);
         expect(res.status).toBe(200);
-        expect(res.body.data).toHaveLength(1);
-        expect(res.body.data[0]).toMatchObject({ content: "great video", userDetails: { userName: "commenter" }, editStatus: false });
-        expect(res.body.data[0].relativeTime).toBe("Today");
+        expect(res.body.data.items).toHaveLength(1);
+        expect(res.body.data.items[0]).toMatchObject({ content: "great video", userDetails: { userName: "commenter" }, editStatus: false });
+        expect(res.body.data.items[0].relativeTime).toBe("Today");
     });
 
     it("rejects an empty comment with 400", async () => {

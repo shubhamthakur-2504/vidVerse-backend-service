@@ -29,3 +29,9 @@ export const userName = z
     .regex(/^[a-z0-9._-]+$/, "Username may only contain letters, numbers, dots, dashes and underscores");
 
 export const newPassword = z.string({ error: "Password is required" }).min(8, "Password must be at least 8 characters").max(128, "Password must be at most 128 characters");
+
+// cursor pagination query params (see utils/pagination.js); limit is capped at 50
+export const pageQuery = (defaultLimit) => ({
+    cursor: z.string().trim().max(200).optional(),
+    limit: z.coerce.number().int("limit must be a whole number").min(1).max(50, "limit must be at most 50").default(defaultLimit),
+});

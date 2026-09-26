@@ -7,6 +7,7 @@ import { Tweet } from "../models/tweet.model.js";
 import { Comment } from "../models/comment.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, isEdited } from "../utils/utils.js";
 import { logger } from "../utils/logger.js";
+import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 // common functions
 const getModel= (type) => {
     if (type === 'video') {
@@ -88,13 +89,19 @@ const getAllComments = asyncHandler(async (req, res) => {
     if(!instance){
         throw new apiError(404,`${type == "video" ? "Video" : "Tweet"} not found`)
     }
+    const cursor = decodeCursor(req.query.cursor)
+    const { limit } = req.query
     try {
+        // newest first, one page at a time (limit + 1 tells whether another page exists)
         const allComment = await Comment.aggregate([
             {
                 $match:{
-                    [key]:id
+                    [key]:id,
+                    ...afterCursor(cursor)
                 }
             },
+            { $sort: NEWEST_FIRST },
+            { $limit: limit + 1 },
             {
                 $lookup:{
                     from:"users",
@@ -123,11 +130,9 @@ const getAllComments = asyncHandler(async (req, res) => {
                 }
             }
         ])
-        if(allComment.length === 0){
-            return res.status(200).json(new apiResponse(200,allComment,"No comments found"))
-        }
-
-        const formatedComment = allComment.map(comment => {
+        // the cursor is built from createdAt, so page before formatting removes it
+        const page = pageOf(allComment, limit)
+        page.items = page.items.map(comment => {
             comment.editStatus = isEdited(comment.createdAt,comment.updatedAt)
             comment.relativeTime = formatRelativeTime(comment.createdAtDiff)
             delete comment.createdAtDiff
@@ -136,7 +141,7 @@ const getAllComments = asyncHandler(async (req, res) => {
             return comment
         })
 
-        res.status(200).json(new apiResponse(200,formatedComment,"Comment fetched successfully"))
+        res.status(200).json(new apiResponse(200,page,"Comment fetched successfully"))
         
     } catch (error) {
         throw new apiError(500,"Something went wrong while fetching comments")

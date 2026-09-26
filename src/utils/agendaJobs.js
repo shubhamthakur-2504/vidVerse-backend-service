@@ -1,6 +1,6 @@
 import { Video } from "../models/video.model.js";
 import agenda from "../db/agendaSetup.js";
-import { downloadFromCloudinary, uploadVideoChunksToCloudinary, deleteFromCloudinary } from "./cloudinary.js";
+import { downloadFromCloudinary, uploadVideoChunksToCloudinary, deleteFromCloudinary, deleteCloudinaryFolder } from "./cloudinary.js";
 import { createVideoChunks } from "./utils.js";
 import fs from 'fs';
 import { Like } from "../models/like.model.js";
@@ -9,61 +9,53 @@ import { Tweet } from "../models/tweet.model.js";
 import { View } from "../models/view.model.js";
 import { extractPublicId } from "./utils.js";
 
+const MAX_PROCESSING_ATTEMPTS = 3
+
 agenda.define("process video chunks", async (job) => {
-    console.log('Processing video chunks job started'); //to be removed after adding logs logger
-    const { videoId } = job.attrs.data;
-    console.log(`Processing video chunks for video ID: ${videoId}`); //to be removed after adding logs logger
+    const { videoId, attempt = 1 } = job.attrs.data;
+    console.log(`Processing video chunks for video ID: ${videoId} (attempt ${attempt})`); //to be removed after adding logs logger
+
+    const video = await Video.findById(videoId);
+    if (!video || video.status === "ready") return;
+
+    const originalVideoUrl = video.videoFileUrl;
+    const localPath = `public/temps/${videoId}.mp4`;
+    let outputDir = null;
     try {
-        const video = await Video.findById(videoId);
-        if (!video) return;
-        
-        const orignalVideoUrl = video.videoFileUrl;
+        await downloadFromCloudinary(originalVideoUrl, localPath);
+        const chunks = await createVideoChunks(localPath);
+        outputDir = chunks.outputDir;
 
-        // Process the video chunks here
-        console.log('Processing video for chunks'); //to be removed after adding logs logger
-        const localPath = `public/temps/${videoId}.mp4`;
-        await downloadFromCloudinary(video.videoFileUrl, localPath);
-        console.log('Downloaded video from Cloudinary'); //to be removed after adding logs logger
+        // throws if any segment or the manifest fails to upload
+        const manifestUrl = await uploadVideoChunksToCloudinary(chunks.chunkPaths, chunks.manifestPath, videoId);
 
-        console.log('Creating video chunks'); //to be removed after adding logs logger
-        const { manifestPath, chunkPaths, outputDir } = await createVideoChunks(localPath);
-        console.log('Video chunks created'); //to be removed after adding logs logger
-
-        console.log(`Uploading video chunks to Cloudinary for video ID: ${videoId}`); //to be removed after adding logs logger
-        const uploadResponse = await uploadVideoChunksToCloudinary(chunkPaths, manifestPath, videoId);
-
-        if (uploadResponse) {
-            console.log('updating video in database with chunk paths'); //to be removed after adding logs logger
-            video.videoFileUrl = uploadResponse; //  manifestPath is returned
-            video.status = 'ready'
-            await video.save();
-            console.log('Video updated successfully'); //to be removed after adding logs logger
-            const publicId = extractPublicId(orignalVideoUrl);
-            console.log(`Deleting original video from Cloudinary with public ID: ${publicId}`); //to be removed after adding logs logger
-            await deleteFromCloudinary(publicId, "video"); // the original upload is a video asset, not the default image type
-            console.log('Deleted video from Cloudinary'); //to be removed after adding logs logger
-            fs.unlinkSync(localPath); // Clean up local file
-            console.log('Deleted local file'); //to be removed after adding logs logger
-            fs.rmSync(outputDir, { recursive: true }); // Clean up output directory
-            console.log('Deleted output directory'); //to be removed after adding logs logger
-        }else{
-            console.log('Failed to upload video chunks to Cloudinary'); //to be removed after adding logs logger
-            video.status = 'failed';
-            await video.save();
-            // Handle failure case, e.g., send notification or log error
+        // the video may have been deleted while it was being processed
+        const updated = await Video.findOneAndUpdate(
+            { _id: videoId },
+            { $set: { videoFileUrl: manifestUrl, status: "ready" } },
+            { new: true }
+        );
+        if (!updated) {
+            await deleteCloudinaryFolder(`videos/${videoId}`);
+            return;
         }
+        await deleteFromCloudinary(extractPublicId(originalVideoUrl), "video"); // the original upload is a video asset, not the default image type
+        console.log(`Video ${videoId} is ready`); //to be removed after adding logs logger
     } catch (error) {
-        console.error('Error processing video chunks:', error); //to be removed after adding logs logger
-        const video = await Video.findById(videoId);
-        if (video) {
-            video.status = 'failed';
-            await video.save();
+        console.error(`Error processing video chunks for ${videoId}:`, error); //to be removed after adding logs logger
+        // drop any segments uploaded before the failure so a retry starts clean
+        await deleteCloudinaryFolder(`videos/${videoId}`).catch((err) => console.error("segment cleanup failed:", err));
+        if (attempt < MAX_PROCESSING_ATTEMPTS) {
+            await agenda.schedule(`in ${attempt * 2} minutes`, "process video chunks", { videoId, attempt: attempt + 1 });
+        } else {
+            await Video.updateOne({ _id: videoId }, { $set: { status: "failed" } });
         }
+    } finally {
+        // local work files are removed whether processing succeeded or not
+        await fs.promises.rm(localPath, { force: true });
+        if (outputDir) await fs.promises.rm(outputDir, { recursive: true, force: true });
     }
 })
-// in next update for video update the following
-// change the fs.unlinksync and fs.rmsync to async version
-// add multiple retries before marking as failed
 
 
 agenda.define("validate like", async (job) => {

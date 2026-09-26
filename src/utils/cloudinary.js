@@ -139,56 +139,45 @@ const downloadFromCloudinary = async (publicURL, localPath) => {
     }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// retry transient Cloudinary failures (network blips, rate limits) with a short backoff
+const uploadWithRetry = async (filePath, options, attempts = 3) => {
+    for (let attempt = 1; ; attempt++) {
+        try {
+            return await cloudinary.uploader.upload(filePath, options)
+        } catch (error) {
+            if (attempt >= attempts) throw error
+            await sleep(1000 * attempt)
+        }
+    }
+}
+
+// uploads every HLS segment, rewrites the manifest to point at the uploaded urls and uploads it
+// throws if anything fails: a manifest with a missing segment would be marked ready but never play
 const uploadVideoChunksToCloudinary = async (chunkPaths, manifestPath, videoId) => {
     if (!chunkPaths || chunkPaths.length === 0) {
-        console.log("File not found");  //to be removed after adding logs logger
-        return null
+        throw new Error("no HLS segments were produced")
     }
     const folder = `videos/${videoId}`
-    const resourceType = 'video';
-    const chunkUrlMap = {};
+    const chunkUrlMap = {}
     for (const chunkPath of chunkPaths) {
-        try {
-            const res = await cloudinary.uploader.upload(
-                chunkPath, {
-                resource_type: resourceType,
-                folder: folder
-            }
-            )
-            const fileName = path.basename(chunkPath);
-            chunkUrlMap[fileName] = res.secure_url;
-            try {
-                await fs.unlink(chunkPath);
-            } catch (err) {
-                console.error("Error deleting local chunk file:", err); //to be removed after adding logs logger
-            }
-        } catch (error) {
-            console.log("Cloudinary upload error::", error); //to be removed after adding logs logger
-        }
+        const res = await uploadWithRetry(chunkPath, { resource_type: "video", folder })
+        chunkUrlMap[path.basename(chunkPath)] = res.secure_url
     }
-    try {
-        let manifestContent = await fs.readFile(manifestPath, 'utf-8');
-        for (const [fileName, fileUrl] of Object.entries(chunkUrlMap)) {
-            manifestContent = manifestContent.replace(new RegExp(fileName, 'g'), fileUrl);
-        }
-        await fs.writeFile(manifestPath, manifestContent, 'utf-8');
-    } catch (err) {
-        console.error("Error updating manifest file:", err);
-        return null;
-    }
-    try {
-        const manifestRes = await cloudinary.uploader.upload(manifestPath, {
-            resource_type: "raw",
-            folder: folder
-        });
-        console.log("Manifest uploaded:", manifestRes.secure_url);
 
-        await fs.unlink(manifestPath);
-        return manifestRes.secure_url; // real URL to play video
-    } catch (err) {
-        console.error("Manifest upload error:", err);
-        return null;
-    }
+    // segment references are whole lines in the playlist; replace line by line instead of a regex over the file
+    const manifestLines = (await fs.readFile(manifestPath, "utf-8")).split(/\r?\n/)
+    const rewritten = manifestLines.map((line) => {
+        const name = line.trim()
+        if (!name || name.startsWith("#")) return line
+        if (!chunkUrlMap[name]) throw new Error(`manifest references a segment that was not uploaded: ${name}`)
+        return chunkUrlMap[name]
+    })
+    await fs.writeFile(manifestPath, rewritten.join("\n"), "utf-8")
+
+    const manifestRes = await uploadWithRetry(manifestPath, { resource_type: "raw", folder })
+    return manifestRes.secure_url // real URL to play video
 }
 // delete every asset under a folder (e.g. the HLS segments + manifest in videos/<videoId>), then the folder itself
 // the admin API deletes at most 1000 assets per call and reports `partial` when more remain

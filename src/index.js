@@ -1,13 +1,10 @@
-import dotenv from "dotenv";
+import { config } from "./config.js";
 import { app } from "./app.js";
 import { connectDB } from "./db/index.js";
 import agenda from "./db/agendaSetup.js";
 import mongoose from "mongoose";
 import './utils/agendaJobs.js';
-dotenv.config({
-    path: "./.env"
-});
-const PORT = process.env.PORT || 3000
+const PORT = config.port
 
 connectDB().then(async () => {
     await agenda.start();

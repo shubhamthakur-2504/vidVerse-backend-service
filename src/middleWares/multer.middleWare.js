@@ -2,11 +2,11 @@ import multer from "multer";
 import {v4 as uuidv4} from "uuid";
 import path from "path";
 import { apiError } from "../utils/apiError.js";
+import { config } from "../config.js";
 
-const MB = 1024 * 1024
-// whole bytes: busboy detects the limit with an exact equality, so a fractional limit would never trigger
-const MAX_IMAGE_SIZE = Math.floor(Number(process.env.MAX_IMAGE_SIZE_MB || 10) * MB)
-const MAX_VIDEO_SIZE = Math.floor(Number(process.env.MAX_VIDEO_SIZE_MB || 500) * MB)
+// whole-byte limits from config (see config.js for why they must be integers)
+const MAX_IMAGE_SIZE = config.uploads.maxImageBytes
+const MAX_VIDEO_SIZE = config.uploads.maxVideoBytes
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]
 const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime", "video/x-matroska"]

@@ -2,6 +2,7 @@ import JWT from "jsonwebtoken";
 import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import  asyncHandler  from "../utils/asyncHandler.js";
+import { config } from "../config.js";
 
 export const verifyJwtToken = asyncHandler(async (req,_, next) => {
     const token = req.headers.authorization?.split(" ")[1] || req.cookies.accessToken
@@ -10,7 +11,7 @@ export const verifyJwtToken = asyncHandler(async (req,_, next) => {
         throw new apiError(401,"Access token is required")
     }
     try {
-        const decodedToken = JWT.verify(token, process.env.JWT_ACCESS_SECRET);    
+        const decodedToken = JWT.verify(token, config.jwt.accessSecret);    
         const user  = await User.findById(decodedToken?.id).select("-password -refreshToken")
         
         if(!user){
@@ -32,7 +33,7 @@ export const lightVerifyJwtToken = asyncHandler(async (req,_, next) => {
     }
     let user = null
     try {
-        const decodedToken = JWT.verify(token, process.env.JWT_ACCESS_SECRET);
+        const decodedToken = JWT.verify(token, config.jwt.accessSecret);
         user = await User.findById(decodedToken?.id).select("-password -refreshToken")
     } catch (error) {
         user = null

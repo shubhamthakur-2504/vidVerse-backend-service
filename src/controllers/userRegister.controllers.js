@@ -5,6 +5,7 @@ import { User } from "../models/user.model.js"
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 import { extractPublicId } from "../utils/utils.js";
 import JWT from "jsonwebtoken"
+import { config } from "../config.js"
 import fs from "fs"
 
 // common function
@@ -15,14 +16,14 @@ function validateEmail(email) {
 // cookie options shared by login, refresh and logout so set-cookie and clear-cookie always match
 // (browsers reject SameSite=None without Secure, so dev uses Lax)
 function authCookieOptions({ withExpiry = true } = {}) {
-    const isProduction = process.env.NODE_ENV === "production"
+    const isProduction = config.isProduction
     const options = {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? "none" : "lax"
     }
     if (withExpiry) {
-        options.expires = new Date(Date.now() + Number(process.env.JWT_COOKIE_EXPIRY) * 24 * 60 * 60 * 1000)
+        options.expires = new Date(Date.now() + config.jwt.cookieExpiryMs)
     }
     return options
 }
@@ -189,7 +190,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new apiError(401, "Refresh token is required")
     }
     try {
-        const decodedToken = JWT.verify(incomingRefreshToken, process.env.JWT_REFRESH_SECRET)
+        const decodedToken = JWT.verify(incomingRefreshToken, config.jwt.refreshSecret)
         const user = await User.findById(decodedToken?.id)
 
         if (!user) {

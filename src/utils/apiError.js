@@ -1,3 +1,5 @@
+import { config } from "../config.js";
+
 class apiError extends Error {
     constructor(
         statusCode,
@@ -22,7 +24,7 @@ class apiError extends Error {
             statusCode: this.statusCode,
             message: this.message,
             errors: this.errors,
-            stack: process.env.NODE_ENV === "development" ? this.stack : undefined 
+            stack: config.isDevelopment ? this.stack : undefined 
         };
     }
 

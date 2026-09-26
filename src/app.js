@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { apiError } from './utils/apiError.js';
+import { config } from './config.js';
 
 //import Routes
 import healthCheckRouter from './routes/healthCheck.routes.js';
@@ -18,12 +19,9 @@ const app = express();
 
 // only trust X-Forwarded-For from proxies we actually run behind; `true` would let any client spoof req.ip
 // TRUST_PROXY: unset = no proxy, a number = hops (e.g. 1 behind one load balancer), or an express value like "loopback"
-const trustProxy = process.env.TRUST_PROXY?.trim();
-app.set('trust proxy', !trustProxy ? false : /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+app.set('trust proxy', config.trustProxy);
 // CORS: support multiple origins from env (comma-separated)
-const allowedOrigins = process.env.CLIENT_URLS
-    ? process.env.CLIENT_URLS.split(',').map(url => url.trim())
-    : [];
+const allowedOrigins = config.clientUrls;
 app.use(cors({
     origin: function (origin, callback) {
         // allow requests with no origin (like mobile apps, curl, etc.)

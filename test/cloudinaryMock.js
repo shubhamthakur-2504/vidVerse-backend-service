@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import path from "path";
 import { vi } from "vitest";
 
 // stand-in for src/utils/cloudinary.js: removes the local temp file like the real uploader and records calls
@@ -12,5 +13,5 @@ export const cloudinaryMock = {
     deleteFromCloudinary: vi.fn(async () => ({ result: "ok" })),
     deleteCloudinaryFolder: vi.fn(async () => {}),
     downloadFromCloudinary: vi.fn(async () => {}),
-    uploadVideoChunksToCloudinary: vi.fn(async () => "https://res.cloudinary.com/test/raw/upload/v1/videos/x/index.m3u8"),
+    uploadFileForHls: vi.fn(async (filePath, { folder }) => `https://res.cloudinary.com/test/raw/upload/v1/${folder}/${path.basename(filePath)}`),
 };

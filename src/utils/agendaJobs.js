@@ -1,7 +1,8 @@
 import { Video } from "../models/video.model.js";
 import agenda from "../db/agendaSetup.js";
-import { downloadFromCloudinary, uploadVideoChunksToCloudinary, deleteFromCloudinary, deleteCloudinaryFolder } from "./cloudinary.js";
-import { createVideoChunks } from "./utils.js";
+import path from "path";
+import { downloadFromCloudinary, uploadFileForHls, uploadOnCloudinary, deleteFromCloudinary, deleteCloudinaryFolder } from "./cloudinary.js";
+import { probeVideo, pickRenditions, transcodeToHls, publishHls, extractFrame } from "../services/hls.service.js";
 import fs from 'fs';
 import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
@@ -22,19 +23,32 @@ agenda.define("process video chunks", async (job) => {
 
     const originalVideoUrl = video.videoFileUrl;
     const localPath = `public/temps/${videoId}.mp4`;
-    let outputDir = null;
+    const outputDir = path.join("public", "temps", `hls_${videoId}_${Date.now()}`);
     try {
         await downloadFromCloudinary(originalVideoUrl, localPath);
-        const chunks = await createVideoChunks(localPath);
-        outputDir = chunks.outputDir;
 
-        // throws if any segment or the manifest fails to upload
-        const manifestUrl = await uploadVideoChunksToCloudinary(chunks.chunkPaths, chunks.manifestPath, videoId);
+        // adaptive bitrate: every ladder rung up to the source height, in one ffmpeg pass
+        const source = await probeVideo(localPath);
+        const renditions = pickRenditions(source.height);
+        log.info({ source, renditions: renditions.map((r) => r.name) }, "transcoding");
+        const ladder = await transcodeToHls(localPath, outputDir, renditions, source.hasAudio);
+
+        // throws if any segment or playlist fails to upload (each upload is retried)
+        const masterUrl = await publishHls(ladder, `videos/${videoId}`, uploadFileForHls);
+
+        // uploads without a custom thumbnail get a frame from the video
+        const update = { videoFileUrl: masterUrl, status: "ready", duration: source.duration || video.duration };
+        if (!video.thumbnailUrl) {
+            const frame = await extractFrame(localPath, path.join(outputDir, "thumbnail.jpg"), Math.min(5, source.duration / 2));
+            const thumbnail = await uploadOnCloudinary(frame, "thumbnail");
+            if (!thumbnail) throw new Error("thumbnail upload failed");
+            update.thumbnailUrl = thumbnail.url;
+        }
 
         // the video may have been deleted while it was being processed
         const updated = await Video.findOneAndUpdate(
             { _id: videoId },
-            { $set: { videoFileUrl: manifestUrl, status: "ready" } },
+            { $set: update },
             { new: true }
         );
         if (!updated) {
@@ -55,7 +69,7 @@ agenda.define("process video chunks", async (job) => {
     } finally {
         // local work files are removed whether processing succeeded or not
         await fs.promises.rm(localPath, { force: true });
-        if (outputDir) await fs.promises.rm(outputDir, { recursive: true, force: true });
+        await fs.promises.rm(outputDir, { recursive: true, force: true });
     }
 })
 

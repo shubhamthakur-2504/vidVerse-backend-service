@@ -3,7 +3,6 @@ import fs from 'fs/promises'
 import { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import axios from "axios";
-import path from 'path';
 import { config } from "../config.js";
 import { logger } from "./logger.js";
 // Configuration
@@ -148,31 +147,10 @@ const uploadWithRetry = async (filePath, options, attempts = 3) => {
     }
 }
 
-// uploads every HLS segment, rewrites the manifest to point at the uploaded urls and uploads it
-// throws if anything fails: a manifest with a missing segment would be marked ready but never play
-const uploadVideoChunksToCloudinary = async (chunkPaths, manifestPath, videoId) => {
-    if (!chunkPaths || chunkPaths.length === 0) {
-        throw new Error("no HLS segments were produced")
-    }
-    const folder = `videos/${videoId}`
-    const chunkUrlMap = {}
-    for (const chunkPath of chunkPaths) {
-        const res = await uploadWithRetry(chunkPath, { resource_type: "video", folder })
-        chunkUrlMap[path.basename(chunkPath)] = res.secure_url
-    }
-
-    // segment references are whole lines in the playlist; replace line by line instead of a regex over the file
-    const manifestLines = (await fs.readFile(manifestPath, "utf-8")).split(/\r?\n/)
-    const rewritten = manifestLines.map((line) => {
-        const name = line.trim()
-        if (!name || name.startsWith("#")) return line
-        if (!chunkUrlMap[name]) throw new Error(`manifest references a segment that was not uploaded: ${name}`)
-        return chunkUrlMap[name]
-    })
-    await fs.writeFile(manifestPath, rewritten.join("\n"), "utf-8")
-
-    const manifestRes = await uploadWithRetry(manifestPath, { resource_type: "raw", folder })
-    return manifestRes.secure_url // real URL to play video
+// uploader handed to services/hls.service.js publishHls: one file (segment or playlist) -> its url
+const uploadFileForHls = async (filePath, { resourceType, folder }) => {
+    const res = await uploadWithRetry(filePath, { resource_type: resourceType, folder })
+    return res.secure_url
 }
 // delete every asset under a folder (e.g. the HLS segments + manifest in videos/<videoId>), then the folder itself
 // the admin API deletes at most 1000 assets per call and reports `partial` when more remain
@@ -192,4 +170,4 @@ const deleteCloudinaryFolder = async (folder) => {
     }
 }
 
-export { uploadOnCloudinary, deleteFromCloudinary, downloadFromCloudinary, uploadVideoChunksToCloudinary, deleteCloudinaryFolder };
+export { uploadOnCloudinary, deleteFromCloudinary, downloadFromCloudinary, uploadFileForHls, deleteCloudinaryFolder };

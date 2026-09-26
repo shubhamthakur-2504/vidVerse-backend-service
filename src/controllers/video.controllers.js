@@ -7,11 +7,8 @@ import { uploadOnCloudinary, deleteFromCloudinary, deleteCloudinaryFolder } from
 import path from "path";
 import fs from "fs";
 import mongoose from "mongoose";
+// ffmpeg / ffprobe binary paths are configured once in utils/utils.js
 import Ffmpeg  from "fluent-ffmpeg";
-import ffprobeStatic from "ffprobe-static";
-import ffmpegStatic from "ffmpeg-static";
-import ffprobe from "fluent-ffmpeg";
-import { Session } from "inspector/promises";
 import { User } from "../models/user.model.js";
 import { Comment } from "../models/comment.model.js";
 import { Like } from "../models/like.model.js";
@@ -21,9 +18,6 @@ import agenda from "../db/agendaSetup.js";
 import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
 
-// common config
-Ffmpeg.setFfmpegPath(ffmpegStatic)
-Ffmpeg.setFfprobePath(ffprobeStatic.path)
 
 
 // common functions

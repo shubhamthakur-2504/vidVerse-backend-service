@@ -128,7 +128,7 @@ const downloadFromCloudinary = async (publicURL, localPath) => {
         await pipeline(response.data, writer);  
         return localPath;
     } catch (err) {
-        try { await fs.unlink(localPath); } catch (_) {}
+        try { await fs.unlink(localPath); } catch { /* the partial file may not exist */ }
         logger.error({ err, publicURL }, "download from cloudinary failed")
         throw err;
     }

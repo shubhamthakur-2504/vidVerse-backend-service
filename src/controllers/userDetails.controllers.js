@@ -1,10 +1,8 @@
 import { apiResponse } from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import {apiError} from "../utils/apiError.js";
 import {User} from "../models/user.model.js"
 import { Subscription } from "../models/subscription.model.js";
 import { getCreatedAtDiffField, formatRelativeTime } from "../utils/utils.js";
-import mongoose from "mongoose";
 
 
 const getUserChannelDetails = asyncHandler(async (req, res) => {

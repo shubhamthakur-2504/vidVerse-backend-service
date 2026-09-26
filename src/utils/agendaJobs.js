@@ -88,7 +88,7 @@ agenda.define("validate like", async (job) => {
 // add bulk validation job to validate multiple likes at once
 // make a collection of invalid likes and delete them in bulk
 
-agenda.define("count views", async (job) => {
+agenda.define("count views", async () => {
     try {
         // Aggregate unprocessed views
         const viewCounts = await View.aggregate([

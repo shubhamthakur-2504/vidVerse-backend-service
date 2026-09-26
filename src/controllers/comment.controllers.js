@@ -32,14 +32,14 @@ const createComment = asyncHandler(async (req, res) => {
     }
     const instance  = await model.findById(id)
     if(!instance ){
-        throw new apiError(404,`${type == "video" ? "Video" : "Tweet"} not found`)
+        throw new apiError(404,`${type === "video" ? "Video" : "Tweet"} not found`)
     }
     try{
         const comment = await Comment.create({
             content:content,
             userId:userId
         })
-        if (type == 'video') {
+        if (type === 'video') {
             comment.videoId = id
         }else{
             comment.tweetId = id
@@ -87,7 +87,7 @@ const getAllComments = asyncHandler(async (req, res) => {
     const instance = await model.findById(id)
     
     if(!instance){
-        throw new apiError(404,`${type == "video" ? "Video" : "Tweet"} not found`)
+        throw new apiError(404,`${type === "video" ? "Video" : "Tweet"} not found`)
     }
     const cursor = decodeCursor(req.query.cursor)
     const { limit } = req.query

@@ -8,7 +8,7 @@ const appWith = (limiter) => {
     const app = express();
     app.set("trust proxy", 1); // lets each test pick a client ip via X-Forwarded-For
     app.post("/login", limiter, (req, res) => res.json({ ok: true }));
-    app.use((err, req, res, next) => res.status(err.statusCode ?? 500).json({ statusCode: err.statusCode, message: err.message }));
+    app.use((err, req, res, _next) => res.status(err.statusCode ?? 500).json({ statusCode: err.statusCode, message: err.message }));
     return app;
 };
 

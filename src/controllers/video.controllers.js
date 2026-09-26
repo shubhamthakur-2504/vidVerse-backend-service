@@ -5,6 +5,7 @@ import { Video } from "../models/video.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, extractPublicId } from "../utils/utils.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import path from "path";
+import fs from "fs";
 import mongoose from "mongoose";
 import Ffmpeg  from "fluent-ffmpeg";
 import ffprobeStatic from "ffprobe-static";
@@ -346,60 +347,68 @@ const toggleIsPublished = asyncHandler(async (req, res) => {
 })
 
 
+// delete a multer temp file; used when a request is rejected before the file is uploaded
+const removeTempFile = (filePath) => {
+    if (!filePath) return
+    fs.unlink(filePath, () => {})
+}
+
 const updateVideoDetails = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    // the route uses upload.single("thumbnail"), so the file is on req.file (not req.files)
+    const thumbnailLocal = req.file?.path
+    const { title, description, category } = req.body
+
     if (!mongoose.isValidObjectId(videoId)) {
-        return res.status(404).json(new apiResponse(404, null, "Video not found"));
+        removeTempFile(thumbnailLocal)
+        throw new apiError(404, "Video not found")
     }
-    const {title, description} = req.body
-    const thumbnailLocal = req.files?.thumbnail?.[0]?.path
     const videoToUpdate = await Video.findById(videoId)
-
-
     if(!videoToUpdate){
-        throw  new apiError(404, "Video not found")
+        removeTempFile(thumbnailLocal)
+        throw new apiError(404, "Video not found")
     }
     if(!videoToUpdate.owner.equals(req.user._id)){
-        throw new apiError(401, "Unauthorized")
+        removeTempFile(thumbnailLocal)
+        throw new apiError(403, "Unauthorized to update this video")
     }
-    
-    const oldThumbnail = videoToUpdate.thumbnailUrl
+    if (category && !Video.schema.path("category").enumValues.includes(category)) {
+        removeTempFile(thumbnailLocal)
+        throw new apiError(400, "Invalid category")
+    }
 
-    try {
-        if(thumbnailLocal){ 
-            const thumbnail = await uploadOnCloudinary(thumbnailLocal,"thumbnail")
-            if(!thumbnail){
-                throw new apiError(500,"Something went wrong while uploading thumbnail")
-            }
-            try {
-                const thumbnailPublicIdOld = extractPublicId(oldThumbnail)
-                videoToUpdate.thumbnailUrl = thumbnail
-                if(videoToUpdate.thumbnailUrl !== oldThumbnail){
-                    await deleteFromCloudinary(thumbnailPublicIdOld)
-                }
-            } catch (error) {
-                videoToUpdate.thumbnailUrl = oldThumbnail
-                await deleteFromCloudinary(thumbnail.public_id)
-                console.log("error in updateVideoDetails:video controller:: error ",error);
-                throw new apiError(500,"Something went wrong while updating thumbnail")
-            }
-        }
-    
-    } catch (error) {
-        throw new apiError(500,"Something went wrong while updating video details")
+    if(title?.trim()){
+        videoToUpdate.title = title.trim()
     }
-    if(title){
-        videoToUpdate.title=title 
-    }
-    if(description){
+    if(description !== undefined){
         videoToUpdate.description = description
     }
-    if(req.body?.category){
-        videoToUpdate.category = req.body.category
+    if(category){
+        videoToUpdate.category = category
     }
-    await videoToUpdate.save({validateBeforeSave:false})
 
-    const updatedVideo = await Video.findById(videoId).select("videoFileUrl thumbnailUrl title description ")
+    // upload the new thumbnail first, save, and only then delete the old one
+    const oldThumbnail = videoToUpdate.thumbnailUrl
+    let newThumbnail = null
+    if(thumbnailLocal){
+        newThumbnail = await uploadOnCloudinary(thumbnailLocal, "thumbnail")
+        if(!newThumbnail){
+            throw new apiError(500, "Something went wrong while uploading thumbnail")
+        }
+        videoToUpdate.thumbnailUrl = newThumbnail.url
+    }
+
+    try {
+        await videoToUpdate.save()
+    } catch (error) {
+        if (newThumbnail?.public_id) await deleteFromCloudinary(newThumbnail.public_id)
+        throw error
+    }
+    if (newThumbnail && oldThumbnail) {
+        await deleteFromCloudinary(extractPublicId(oldThumbnail))
+    }
+
+    const updatedVideo = await Video.findById(videoId).select("videoFileUrl thumbnailUrl title description category")
 
     res.status(200).json(new apiResponse(200,updatedVideo,"Video Details Updated Successfully"))
 })

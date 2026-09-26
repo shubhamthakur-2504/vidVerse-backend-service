@@ -26,6 +26,23 @@ describe("video feed", () => {
     });
 });
 
+describe("feed search (S7)", () => {
+    it("matches the search text literally", async () => {
+        const owner = await createUser();
+        await createVideo(owner, { title: "a.b explained" });
+        await createVideo(owner, { title: "axb explained" });
+
+        const dot = await request(app).get("/api/v1/videos/getallvideos").query({ query: "a.b" });
+        expect(dot.status).toBe(200);
+        expect(dot.body.data.map((v) => v.title)).toEqual(["a.b explained"]);
+
+        // an unbalanced "(" used to be an invalid regex and a 500
+        const paren = await request(app).get("/api/v1/videos/getallvideos").query({ query: "(" });
+        expect(paren.status).toBe(200);
+        expect(paren.body.data).toEqual([]);
+    });
+});
+
 describe("views and watch history (C6, H5)", () => {
     it("records a view for an anonymous viewer without touching any history", async () => {
         const video = await createVideo(await createUser());

@@ -2,7 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { apiError } from "../utils/apiError.js";
 import { Video } from "../models/video.model.js";
-import { getCreatedAtDiffField, formatRelativeTime, extractPublicId } from "../utils/utils.js";
+import { getCreatedAtDiffField, formatRelativeTime, extractPublicId, escapeRegex } from "../utils/utils.js";
 import { uploadOnCloudinary, deleteFromCloudinary, deleteCloudinaryFolder } from "../utils/cloudinary.js";
 import path from "path";
 import fs from "fs";
@@ -216,9 +216,11 @@ const getAllVideos = asyncHandler(async (req, res) => {
     }
     
     if (query) {
+        // match the text literally: raw user input in $regex allowed "(" to crash the query and ".*"-style patterns to scan everything
+        const pattern = escapeRegex(query);
         matchStage.$or = [
-            { title: { $regex: query, $options: "i" } },
-            { description: { $regex: query, $options: "i" } }
+            { title: { $regex: pattern, $options: "i" } },
+            { description: { $regex: pattern, $options: "i" } }
         ];
     }
     

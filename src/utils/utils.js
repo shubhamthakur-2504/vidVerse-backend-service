@@ -68,6 +68,9 @@ const extractPublicId = (url) => {
     return publicId;
 }
 
+// escape user input for use inside a RegExp / $regex so it matches literally
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const isEdited = (createdAt, updatedAt) => {
     const threshold = 1000; // 1 second threshold (in milliseconds)
     return Math.abs(createdAt.getTime() - updatedAt.getTime()) > threshold;
@@ -120,4 +123,4 @@ const createVideoChunks = (inputPath) => {
 
 
 
-export { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited, canEdit, createVideoChunks };
+export { getCreatedAtDiffField, formatRelativeTime, extractPublicId, escapeRegex, isEdited, canEdit, createVideoChunks };

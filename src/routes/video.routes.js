@@ -7,11 +7,12 @@ import { lightVerifyJwtToken as lightauth } from "../middleWares/auth.middleWare
 import { uploadVideo, deleteVideo ,getAllVideos, getVideoDetails, toggleIsPublished, updateVideoDetails, getMyVideos, getCategories, recordView} from "../controllers/video.controllers.js";
 import { createComment, deleteComment, editComment, getAllComments, createrCommentDelete, getCommentDetails } from "../controllers/comment.controllers.js";
 import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
+import { uploadLimiter } from "../middleWares/rateLimit.middleWare.js";
 
 const router = Router();
 router.param("id", validateObjectIdParam)
 router.param("videoId", validateObjectIdParam)
-router.route("/upload").post(auth, videoUpload.fields([
+router.route("/upload").post(auth, uploadLimiter, videoUpload.fields([
     {name:"video", maxCount:1},
     {name:"thumbnail", maxCount:1}
 ]), uploadVideo);

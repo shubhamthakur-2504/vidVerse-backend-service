@@ -7,23 +7,23 @@ import {verifyJwtToken as auth} from "../middleWares/auth.middleWare.js"
 import { refreshAccessToken } from "../controllers/userRegister.controllers.js";
 import { changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails, getCurrentUser } from "../controllers/userRegister.controllers.js"
 import { getWatchHistory, getUserChannelDetails } from "../controllers/userDetails.controllers.js";
+import { authLimiter } from "../middleWares/rateLimit.middleWare.js";
 
 const router = Router()
 
-router.route("/register").post(upload.fields([
+// rate limits run before multer so a rejected request never writes files
+router.route("/register").post(authLimiter, upload.fields([
     {name:"avatar", maxCount:1},
     {name:"cover", maxCount:1}
 ]),userRegister)
 
-router.route("/login").post(async (req,res,next) => {
-    await login(req,res,next) 
-})
+router.route("/login").post(authLimiter, login)
 
 router.route("/refreshaccess").post(refreshAccessToken)
 
 //secure routes
 router.route("/logout").post(auth,logout)
-router.route("/changepassword").patch(auth,changeCurrentPassword)
+router.route("/changepassword").patch(auth,authLimiter,changeCurrentPassword)
 router.route("/changeavatar").patch( auth, upload.fields([{name:"avatar", maxCount:1}]),changeAvatar)
 router.route("/changecover").patch(auth, upload.fields([{name:"cover", maxCount:1}]),changeCover)
 router.route("/updatedetails").patch(auth,updateAccountDetails)

@@ -18,6 +18,7 @@ import tweetRouter from './routes/tweet.routes.js'
 import playListRouter from './routes/playList.routes.js';
 import subscriptionRouter from './routes/subscription.routes.js';
 import reaction from './routes/like.routes.js';
+import { apiLimiter } from './middleWares/rateLimit.middleWare.js';
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use(express.urlencoded({extended:true,limit:'20kb'}));
 app.use(cookieParser());
 
 //routes
+app.use("/api", apiLimiter);
 app.use("/api/v1/healthcheck",healthCheckRouter);
 app.use("/api/v1/user",userRouter);
 app.use("/api/v1/videos",videoRouter);

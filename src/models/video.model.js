@@ -5,9 +5,10 @@ const videoSchema = new Schema({
         type:String,
         required:true
     },
+    // direct uploads get their thumbnail from the processing job, so it is only required once the video is ready
     thumbnailUrl:{
         type:String,
-        required:true
+        required: function () { return this.status === "ready" }
     },
     title:{
         type:String,
@@ -20,9 +21,10 @@ const videoSchema = new Schema({
         type:Number,
         default:0
     },
+    // seconds; set from Cloudinary's metadata on direct upload and from ffprobe by the processing job
     duration:{
         type:Number,
-        required:true
+        default:0
     },
     isPublished:{
         type:Boolean,
@@ -42,8 +44,14 @@ const videoSchema = new Schema({
         type:Schema.Types.ObjectId,
         ref:"User",
         required:true
-    }   
+    },
+    // Cloudinary public id of a direct upload (uploads/<userId>/<uuid>); prevents registering one upload twice
+    sourcePublicId:{
+        type:String
+    }
 },{timestamps:true})
+
+videoSchema.index({ sourcePublicId: 1 }, { unique: true, sparse: true })
 
 
 // public feed (newest first, optionally per category) and "my videos"; createdAt + _id is the pagination cursor

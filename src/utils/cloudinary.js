@@ -170,4 +170,14 @@ const deleteCloudinaryFolder = async (folder) => {
     }
 }
 
-export { uploadOnCloudinary, deleteFromCloudinary, downloadFromCloudinary, uploadFileForHls, deleteCloudinaryFolder };
+// metadata of a video uploaded straight to Cloudinary by the browser; null when it does not exist
+const getVideoResource = async (publicId) => {
+    try {
+        return await cloudinary.api.resource(publicId, { resource_type: "video" })
+    } catch (error) {
+        if (error?.error?.http_code === 404) return null
+        throw error
+    }
+}
+
+export { uploadOnCloudinary, deleteFromCloudinary, downloadFromCloudinary, uploadFileForHls, deleteCloudinaryFolder, getVideoResource };

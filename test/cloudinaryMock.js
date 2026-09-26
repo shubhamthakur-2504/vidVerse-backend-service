@@ -13,5 +13,6 @@ export const cloudinaryMock = {
     deleteFromCloudinary: vi.fn(async () => ({ result: "ok" })),
     deleteCloudinaryFolder: vi.fn(async () => {}),
     downloadFromCloudinary: vi.fn(async () => {}),
+    getVideoResource: vi.fn(async () => null),
     uploadFileForHls: vi.fn(async (filePath, { folder }) => `https://res.cloudinary.com/test/raw/upload/v1/${folder}/${path.basename(filePath)}`),
 };

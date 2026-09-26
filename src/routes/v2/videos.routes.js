@@ -7,7 +7,8 @@ import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.j
 import { withType } from "../../middleWares/type.middleWare.js";
 import { createView as view } from "../../middleWares/view.middleWare.js";
 import { listVideosSchema, uploadVideoSchema, commentSchema, listCommentsSchema } from "../../validators/index.js";
-import { updateVideoV2Schema, relatedVideosSchema } from "../../validators/v2.js";
+import { updateVideoV2Schema, relatedVideosSchema, createFromUploadSchema } from "../../validators/v2.js";
+import { createUploadIntent, createVideoFromUpload } from "../../controllers/directUpload.controllers.js";
 import { getAllVideos, getCategories, uploadVideo, updateVideoDetails, deleteVideo, recordView } from "../../controllers/video.controllers.js";
 import { listCommentsWithStats, createComment } from "../../controllers/comment.controllers.js";
 import { getWatchPayload, getRelatedVideos } from "../../controllers/watch.controllers.js";
@@ -19,6 +20,10 @@ router.use(withType("video"));
 
 router.get("/", validate(listVideosSchema), getAllVideos);
 router.get("/categories", getCategories);
+// direct upload (preferred): signed browser -> Cloudinary upload, then register it
+router.post("/upload-intent", auth, uploadLimiter, createUploadIntent);
+router.post("/from-upload", auth, upload.single("thumbnail"), validate(createFromUploadSchema), createVideoFromUpload);
+// upload through this server (multipart), kept for small files and older clients
 router.post("/", auth, uploadLimiter, videoUpload.fields([{ name: "video", maxCount: 1 }, { name: "thumbnail", maxCount: 1 }]), validate(uploadVideoSchema), uploadVideo);
 
 router.get("/:videoId", lightauth, getWatchPayload);

@@ -186,7 +186,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     //    - unprocessed videos: videoFileUrl still points at the original upload
     const mediaCleanup = await Promise.allSettled([
         deleteCloudinaryFolder(`videos/${video._id}`),
-        video.status === "ready" ? Promise.resolve() : deleteFromCloudinary(extractPublicId(video.videoFileUrl), "video"),
+        video.status === "ready" ? Promise.resolve() : deleteFromCloudinary(video.sourcePublicId ?? extractPublicId(video.videoFileUrl), "video"),
         deleteFromCloudinary(extractPublicId(video.thumbnailUrl)),
     ])
     mediaCleanup.filter(r => r.status === "rejected").forEach(r =>

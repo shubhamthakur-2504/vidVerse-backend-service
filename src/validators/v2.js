@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { objectId, optionalText, optionalLongText, booleanLike, pageQuery } from "./common.js";
+import { objectId, text, optionalText, optionalLongText, booleanLike, pageQuery, category } from "./common.js";
 import { updateVideoSchema } from "./index.js";
 
 // PUT /reactions/:targetType/:id
@@ -22,6 +22,16 @@ export const updateVideoV2Schema = {
 };
 
 export const channelVideosSchema = { query: z.object(pageQuery(24)) };
+
+// POST /videos/from-upload: register a file the browser uploaded straight to Cloudinary
+export const createFromUploadSchema = {
+    body: z.object({
+        publicId: z.string().regex(/^uploads\/[a-f0-9]{24}\/[0-9a-f-]{36}$/i, "Invalid upload id"),
+        title: text("Title", { max: 100 }),
+        description: optionalLongText("Description", 5000),
+        category: z.preprocess((value) => (value === "" ? undefined : value), category.optional()),
+    }),
+};
 
 export const relatedVideosSchema = {
     query: z.object({ limit: z.coerce.number().int().min(1).max(24).default(12) }),

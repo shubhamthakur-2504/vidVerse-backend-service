@@ -55,7 +55,8 @@ agenda.define("process video chunks", async (job) => {
             await deleteCloudinaryFolder(`videos/${videoId}`);
             return;
         }
-        await deleteFromCloudinary(extractPublicId(originalVideoUrl), "video"); // the original upload is a video asset, not the default image type
+        // the original upload is a video asset (not the default image type); direct uploads know their exact public id
+        await deleteFromCloudinary(video.sourcePublicId ?? extractPublicId(originalVideoUrl), "video");
         log.info("video is ready")
     } catch (error) {
         log.error({ err: error }, "video processing failed")

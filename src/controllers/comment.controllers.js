@@ -123,7 +123,7 @@ const getAllComments = asyncHandler(async (req, res) => {
             }
         ])
         if(allComment.length === 0){
-            res.status(200).json(new apiResponse(200,allComment,"No comments found"))
+            return res.status(200).json(new apiResponse(200,allComment,"No comments found"))
         }
 
         const formatedComment = allComment.map(comment => {

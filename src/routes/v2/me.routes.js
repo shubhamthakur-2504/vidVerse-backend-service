@@ -9,6 +9,7 @@ import { getWatchHistory, getUserChannelDetails } from "../../controllers/userDe
 import { Mysubscriptions } from "../../controllers/subscription.controllers.js";
 import { getMyVideos } from "../../controllers/video.controllers.js";
 import { getStudioOverview, getMyVideo } from "../../controllers/studio.controllers.js";
+import { removeFromWatchHistory, clearWatchHistory } from "../../controllers/library.controllers.js";
 import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.js";
 
 // /api/v2/me: the signed-in user
@@ -24,6 +25,8 @@ router.put("/password", authLimiter, validate(changePasswordSchema), changeCurre
 
 router.get("/stats", getUserChannelDetails);
 router.get("/history", getWatchHistory);
+router.delete("/history", clearWatchHistory);
+router.delete("/history/:videoId", removeFromWatchHistory);
 router.get("/subscriptions", validate(paginationSchema), Mysubscriptions);
 router.get("/videos", getMyVideos);
 router.get("/videos/:videoId", getMyVideo);

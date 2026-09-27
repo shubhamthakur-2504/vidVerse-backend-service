@@ -16,6 +16,9 @@ export const createPlaylistV2Schema = {
     }),
 };
 
+// GET /playlists?videoId=: mark which of my playlists already hold this video
+export const myPlaylistsSchema = { query: z.object({ videoId: objectId("videoId").optional() }) };
+
 // PATCH /videos/:videoId also sets visibility (replaces the v1 toggle endpoint)
 export const updateVideoV2Schema = {
     body: updateVideoSchema.body.extend({ isPublished: booleanLike.optional() }),

@@ -1,23 +1,26 @@
 import { Router } from "express";
 import { upload } from "../../middleWares/multer.middleWare.js";
-import { verifyJwtToken as auth } from "../../middleWares/auth.middleWare.js";
+import { verifyJwtToken as auth, lightVerifyJwtToken as lightauth } from "../../middleWares/auth.middleWare.js";
 import { validate } from "../../middleWares/validate.middleWare.js";
 import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.js";
 import { withType } from "../../middleWares/type.middleWare.js";
 import { updatePlaylistSchema } from "../../validators/index.js";
-import { createPlaylistV2Schema } from "../../validators/v2.js";
+import { createPlaylistV2Schema, myPlaylistsSchema } from "../../validators/v2.js";
 import { playlistVideoFromBody, playlistVideoFromParams } from "./adapters.js";
-import { createPlayList, getAllPlayList, getPlayList, updatePlayList, deletePlayList, addVideoToPlayList, removeVideoFromPlayList } from "../../controllers/playList.controllers.js";
+import { createPlayList, updatePlayList, deletePlayList, addVideoToPlayList, removeVideoFromPlayList } from "../../controllers/playList.controllers.js";
+import { getMyPlaylists, getPlaylistWithVideos } from "../../controllers/library.controllers.js";
 
-// /api/v2/playlists: the signed-in user's playlists
+// /api/v2/playlists: a public playlist page, and the signed-in user's playlists
 const router = Router();
 router.param("id", validateObjectIdParam);
 router.param("videoId", validateObjectIdParam);
+// playlists are public; the viewer (if signed in) also sees their own non-public videos in it
+router.get("/:id", lightauth, getPlaylistWithVideos);
+
 router.use(auth, withType("userplaylist"));
 
-router.get("/", getAllPlayList);
+router.get("/", validate(myPlaylistsSchema), getMyPlaylists);
 router.post("/", upload.single("thumbnail"), validate(createPlaylistV2Schema), playlistVideoFromBody, createPlayList);
-router.get("/:id", getPlayList);
 router.patch("/:id", upload.single("thumbnail"), validate(updatePlaylistSchema), updatePlayList);
 router.delete("/:id", deletePlayList);
 

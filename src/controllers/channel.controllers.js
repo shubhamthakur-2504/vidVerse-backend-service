@@ -4,6 +4,7 @@ import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { Video } from "../models/video.model.js";
 import { Subscription } from "../models/subscription.model.js";
+import { PlayList } from "../models/playList.model.js";
 import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 
 const PUBLIC_VIDEO = { isPublished: true, status: "ready" };
@@ -46,4 +47,16 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200, page, "Channel videos fetched successfully"));
 });
 
-export { getChannel, getChannelVideos };
+// a channel's playlists (playlists are public), most recently updated first
+const getChannelPlaylists = asyncHandler(async (req, res) => {
+    const channel = await findChannel(req.params.userName);
+    const playlists = await PlayList.aggregate([
+        { $match: { ownerId: channel._id } },
+        { $sort: { updatedAt: -1 } },
+        { $limit: 50 },
+        { $project: { title: 1, description: 1, thumbnailUrl: 1, updatedAt: 1, videoCount: { $size: "$videos" } } },
+    ]);
+    return res.status(200).json(new apiResponse(200, playlists, "Channel playlists fetched successfully"));
+});
+
+export { getChannel, getChannelVideos, getChannelPlaylists };

@@ -5,6 +5,7 @@ import { createUser, createVideo, authHeader } from "./helpers.js";
 
 vi.mock("../src/utils/cloudinary.js", () => cloudinaryMock);
 const { app } = await import("../src/app.js");
+const { PlayList } = await import("../src/models/playList.model.js");
 
 const api = (method, path) => request(app)[method](`/api/v2${path}`);
 const cookieOf = (res, name) => res.headers["set-cookie"]?.find((c) => c.startsWith(`${name}=`))?.split(";")[0];
@@ -85,6 +86,13 @@ describe("v2: me, channels and subscriptions", () => {
         expect((await api("get", "/me/subscriptions").set(authHeader(fan))).body.data.items[0].channel.userName).toBe("creator");
         expect((await api("get", "/me/stats").set(authHeader(creator))).body.data.subscribersCount).toBe(1);
         expect((await api("delete", `/channels/${creator._id}/subscription`).set(authHeader(fan))).status).toBe(204);
+
+        // public playlists with their video counts
+        await PlayList.create({ title: "Best of", thumbnailUrl: "t", videos: [(await createVideo(creator))._id], ownerId: creator._id });
+        const lists = await api("get", "/channels/creator/playlists");
+        expect(lists.status).toBe(200);
+        expect(lists.body.data).toMatchObject([{ title: "Best of", videoCount: 1 }]);
+        expect((await api("get", "/channels/nobody-here/playlists")).status).toBe(404);
         expect((await api("get", "/channels/nobody-here")).status).toBe(404);
     });
 });

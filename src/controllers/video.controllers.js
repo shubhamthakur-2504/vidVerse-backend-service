@@ -467,6 +467,10 @@ const getMyVideos = asyncHandler(async (req, res) => {
 
 // Get distinct categories that actually have published+ready videos
 const getCategories = asyncHandler(async (req, res) => {
+    // ?all=true: every allowed category (upload / edit forms), otherwise only categories that have videos
+    if (req.query.all === "true") {
+        return res.status(200).json(new apiResponse(200, Video.schema.path("category").enumValues, "Categories fetched successfully"))
+    }
     const categories = await Video.distinct("category", {
         isPublished: true,
         status: "ready"

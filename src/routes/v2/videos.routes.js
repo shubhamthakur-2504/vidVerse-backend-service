@@ -12,6 +12,7 @@ import { createUploadIntent, createVideoFromUpload } from "../../controllers/dir
 import { getAllVideos, getCategories, uploadVideo, updateVideoDetails, deleteVideo, recordView } from "../../controllers/video.controllers.js";
 import { listCommentsWithStats, createComment } from "../../controllers/comment.controllers.js";
 import { getWatchPayload, getRelatedVideos } from "../../controllers/watch.controllers.js";
+import { reprocessVideo } from "../../controllers/studio.controllers.js";
 
 // /api/v2/videos
 const router = Router();
@@ -30,6 +31,7 @@ router.get("/:videoId", lightauth, getWatchPayload);
 router.get("/:videoId/related", validate(relatedVideosSchema), getRelatedVideos);
 router.patch("/:videoId", auth, upload.single("thumbnail"), validate(updateVideoV2Schema), updateVideoDetails);
 router.delete("/:videoId", auth, deleteVideo);
+router.post("/:videoId/reprocess", auth, reprocessVideo);
 
 router.post("/:videoId/views", lightauth, view, recordView);
 

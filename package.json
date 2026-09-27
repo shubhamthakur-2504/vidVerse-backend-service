@@ -25,7 +25,7 @@
   "dependencies": {
     "agenda": "^5.0.0",
     "axios": "^1.11.0",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
+import fs from "fs/promises";
 import { cloudinaryMock } from "./cloudinaryMock.js";
 import { createUser } from "./helpers.js";
 
@@ -57,9 +58,16 @@ describe("auth flow", () => {
     });
 
     it("fails with 502 and creates nothing when an image upload fails (M4)", async () => {
+        // like the real helper, both remove the local file; the second upload fails
         cloudinaryMock.uploadOnCloudinary
-            .mockImplementationOnce(async () => ({ url: "https://res.cloudinary.com/test/image/upload/v1/avatars/ok.png", public_id: "avatars/ok" }))
-            .mockImplementationOnce(async () => null);
+            .mockImplementationOnce(async (localPath) => {
+                await fs.unlink(localPath).catch(() => {});
+                return { url: "https://res.cloudinary.com/test/image/upload/v1/avatars/ok.png", public_id: "avatars/ok" };
+            })
+            .mockImplementationOnce(async (localPath) => {
+                await fs.unlink(localPath).catch(() => {});
+                return null;
+            });
         const res = await request(app).post("/api/v2/auth/register")
             .field("userName", "flaky").field("email", "flaky@example.com").field("fullName", "Flaky").field("password", "password123")
             .attach("avatar", png, { filename: "a.png", contentType: "image/png" })

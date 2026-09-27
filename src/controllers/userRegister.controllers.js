@@ -9,11 +9,6 @@ import { setAuthCookies, clearAuthCookies } from "../utils/authCookies.js";
 import fs from "fs"
 import { logger } from "../utils/logger.js";
 
-// common function
-function validateEmail(email) {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-}
 function deleteLocalFile(filePath) {
     try {
         fs.unlinkSync(filePath)
@@ -22,42 +17,39 @@ function deleteLocalFile(filePath) {
     }
 }
 
-// register
+// register: name, email and password are checked by registerSchema; the avatar is required, the cover optional (M4)
 const registerUser = asyncHandler(async (req, res) => {
 
     const { userName, email, password, fullName } = req.body
     const avatarLocal = req.files?.avatar?.[0]?.path
     const coverLocal = req.files?.cover?.[0]?.path
-
-    //validation code here
-    if (!userName || !email || !password || !fullName || !avatarLocal || !coverLocal) {
+    const discardLocalFiles = () => {
         if (avatarLocal) deleteLocalFile(avatarLocal)
         if (coverLocal) deleteLocalFile(coverLocal)
-        throw new apiError(400, "All fields are required")
     }
 
-    const existedUser = await User.findOne({
-        $or: [{ userName: userName }, { email: email }]
-    })
+    if (!avatarLocal) {
+        discardLocalFiles()
+        throw new apiError(400, "Avatar is required")
+    }
 
-    if (existedUser) {
-        if (avatarLocal) deleteLocalFile(avatarLocal)
-        if (coverLocal) deleteLocalFile(coverLocal)
+    if (await User.exists({ $or: [{ userName: userName }, { email: email }] })) {
+        discardLocalFiles()
         throw new apiError(409, "User already exists")
     }
 
-    if (!validateEmail(email)) {
-        if (avatarLocal) deleteLocalFile(avatarLocal)
-        if (coverLocal) deleteLocalFile(coverLocal)
-        throw new apiError(410, "Invalid email ");
+    // the upload helper removes the local file whether or not the upload succeeds, and returns null on failure
+    const avatar = await uploadOnCloudinary(avatarLocal, "avatar")
+    const cover = coverLocal ? await uploadOnCloudinary(coverLocal, "cover") : null
+    const discardUploads = async () => {
+        if (avatar?.public_id) await deleteFromCloudinary(avatar.public_id)
+        if (cover?.public_id) await deleteFromCloudinary(cover.public_id)
     }
 
-    // upload on cloudinary
-    const avatar = await uploadOnCloudinary(avatarLocal, "avatar")
-    const cover = await uploadOnCloudinary(coverLocal, "cover")
-
-
-    // create user
+    if (!avatar?.url || (coverLocal && !cover?.url)) {
+        await discardUploads()
+        throw new apiError(502, "Could not upload your images, please try again")
+    }
 
     try {
         const user = await User.create({
@@ -65,7 +57,7 @@ const registerUser = asyncHandler(async (req, res) => {
             email: email,
             password: password,
             fullName: fullName,
-            avatarUrl: avatar?.url,
+            avatarUrl: avatar.url,
             coverImageUrl: cover?.url
         })
         const createdUser = await User.findById(user._id).select("-password -refreshToken -__v -createdAt -updatedAt -watchHistory")
@@ -75,12 +67,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
         return res.status(201).json(new apiResponse(201, createdUser, "User registered successfully"))
     } catch (error) {
-        if (avatar?.public_id) await deleteFromCloudinary(avatar?.public_id)
-        if (cover?.public_id) await deleteFromCloudinary(cover?.public_id)
-        if (avatarLocal) deleteLocalFile(avatarLocal)
-        if (coverLocal) deleteLocalFile(coverLocal)
+        await discardUploads()
         throw new apiError(500, "Something went wrong while registering user and images were deleted")
-
     }
 })
 

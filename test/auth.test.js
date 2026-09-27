@@ -35,6 +35,41 @@ describe("auth flow", () => {
         expect(res.status).toBe(409);
     });
 
+    it("registers without a cover image, but not without an avatar (M4)", async () => {
+        const base = () => request(app).post("/api/v2/auth/register")
+            .field("userName", "nocover").field("email", "nocover@example.com").field("fullName", "No Cover").field("password", "password123");
+
+        expect((await base()).status).toBe(400);
+        expect(await User.exists({ userName: "nocover" })).toBeNull();
+
+        const res = await base().attach("avatar", png, { filename: "a.png", contentType: "image/png" });
+        expect(res.status).toBe(201);
+        expect(res.body.data.avatarUrl).toMatch(/avatars\//);
+        expect(res.body.data.coverImageUrl).toBeUndefined();
+        expect(cloudinaryMock.uploadOnCloudinary).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects an invalid email with 400, not 410 (M4)", async () => {
+        const res = await request(app).post("/api/v2/auth/register")
+            .field("userName", "bademail").field("email", "not-an-email").field("fullName", "Bad").field("password", "password123")
+            .attach("avatar", png, { filename: "a.png", contentType: "image/png" });
+        expect(res.status).toBe(400);
+    });
+
+    it("fails with 502 and creates nothing when an image upload fails (M4)", async () => {
+        cloudinaryMock.uploadOnCloudinary
+            .mockImplementationOnce(async () => ({ url: "https://res.cloudinary.com/test/image/upload/v1/avatars/ok.png", public_id: "avatars/ok" }))
+            .mockImplementationOnce(async () => null);
+        const res = await request(app).post("/api/v2/auth/register")
+            .field("userName", "flaky").field("email", "flaky@example.com").field("fullName", "Flaky").field("password", "password123")
+            .attach("avatar", png, { filename: "a.png", contentType: "image/png" })
+            .attach("cover", png, { filename: "c.png", contentType: "image/png" });
+        expect(res.status).toBe(502);
+        expect(await User.exists({ userName: "flaky" })).toBeNull();
+        // the avatar that did upload is removed again
+        expect(cloudinaryMock.deleteFromCloudinary).toHaveBeenCalledWith("avatars/ok");
+    });
+
     it.each([
         ["username", { identifier: "carol" }],
         ["username in any case", { identifier: "CaRoL" }],

@@ -25,6 +25,7 @@ export const updateVideoV2Schema = {
 };
 
 export const channelVideosSchema = { query: z.object(pageQuery(24)) };
+export const subscriptionFeedSchema = { query: z.object(pageQuery(24)) };
 
 // POST /videos/from-upload: register a file the browser uploaded straight to Cloudinary
 export const createFromUploadSchema = {

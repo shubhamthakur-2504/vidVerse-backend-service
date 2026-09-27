@@ -25,6 +25,7 @@ describe("indexes serve the hot queries", () => {
         ["feed", () => Video.find({ status: "ready", isPublished: true }).sort({ createdAt: -1, _id: -1 }).limit(24)],
         ["feed by category", () => Video.find({ category: "Music", status: "ready", isPublished: true }).sort({ createdAt: -1, _id: -1 }).limit(24)],
         ["my videos", () => Video.find({ owner: id }).sort({ createdAt: -1 })],
+        ["subscriptions feed", () => Video.find({ owner: { $in: [id, new mongoose.Types.ObjectId()] }, status: "ready", isPublished: true }).sort({ createdAt: -1, _id: -1 }).limit(24)],
         ["video comments", () => Comment.find({ videoId: id }).sort({ createdAt: -1, _id: -1 }).limit(20)],
         ["tweet feed", () => Tweet.find({}).sort({ createdAt: -1, _id: -1 }).limit(20)],
         ["my subscriptions", () => Subscription.find({ subscriber: id }).sort({ createdAt: -1, _id: -1 })],

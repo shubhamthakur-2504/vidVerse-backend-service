@@ -4,6 +4,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import { Subscription } from "../models/subscription.model.js";
 import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
+import { Video } from "../models/video.model.js";
 import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 
 const subscribe = asyncHandler(async (req, res) => {
@@ -126,4 +127,21 @@ const putSubscription = asyncHandler(async (req, res) => {
     return res.status(created ? 201 : 200).json(new apiResponse(created ? 201 : 200, { channel: channelId, isSubscribed: true }, created ? "Subscribed successfully" : "Already subscribed"))
 })
 
-export { subscribe, unsubscribe, subscribersCount, isSubscribed, Mysubscriptions, putSubscription }
+// v2: GET /me/subscriptions/videos: public videos from every channel the user follows, newest first
+const getSubscriptionFeed = asyncHandler(async (req, res) => {
+    const cursor = decodeCursor(req.query.cursor)
+    const { limit } = req.query
+    const channelIds = await Subscription.distinct("channel", { subscriber: req.user._id })
+    if (channelIds.length === 0) {
+        return res.status(200).json(new apiResponse(200, { items: [], nextCursor: null }, "Subscription feed fetched successfully"))
+    }
+    const videos = await Video.find({ owner: { $in: channelIds }, status: "ready", isPublished: true, ...afterCursor(cursor) })
+        .sort(NEWEST_FIRST)
+        .limit(limit + 1)
+        .select("title thumbnailUrl duration views category createdAt owner")
+        .populate("owner", "userName fullName avatarUrl")
+        .lean()
+    return res.status(200).json(new apiResponse(200, pageOf(videos, limit), "Subscription feed fetched successfully"))
+})
+
+export { subscribe, unsubscribe, subscribersCount, isSubscribed, Mysubscriptions, putSubscription, getSubscriptionFeed }

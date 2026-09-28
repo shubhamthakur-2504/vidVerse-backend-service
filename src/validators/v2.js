@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { objectId, text, optionalText, optionalLongText, booleanLike, pageQuery, category } from "./common.js";
-import { updateVideoSchema } from "./index.js";
+import { updateVideoSchema, listVideosSchema } from "./index.js";
+
+// GET /videos: the feed and search results, with the search filters
+export const listVideosV2Schema = {
+    query: listVideosSchema.query.extend({
+        sort: z.enum(["newest", "views"], { error: "sort must be newest or views" }).default("newest"),
+        uploaded: z.enum(["hour", "today", "week", "month", "year"], { error: "Invalid upload date filter" }).optional(),
+        duration: z.enum(["short", "medium", "long"], { error: "duration must be short, medium or long" }).optional(),
+    }),
+};
 
 // PUT /reactions/:targetType/:id
 export const setReactionSchema = {

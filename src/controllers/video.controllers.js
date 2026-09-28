@@ -15,7 +15,7 @@ import { Like } from "../models/like.model.js";
 import { View } from "../models/view.model.js";
 import { PlayList } from "../models/playList.model.js";
 import agenda from "../db/agendaSetup.js";
-import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
+import { NEWEST_FIRST, MOST_VIEWED, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
 
 
@@ -198,19 +198,33 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 //get all videos
 
+// search filters (v2 only: v1's validator strips these params, so v1 keeps newest-first with no filters)
+const UPLOADED_WITHIN_MS = { hour: 3_600_000, today: 86_400_000, week: 7 * 86_400_000, month: 30 * 86_400_000, year: 365 * 86_400_000 };
+// seconds: under 4 minutes, 4 to 20 minutes, over 20 minutes
+const DURATION_RANGES = { short: { $lt: 240 }, medium: { $gte: 240, $lte: 1200 }, long: { $gt: 1200 } };
+
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { category, query, limit } = req.query;
-    const cursor = decodeCursor(req.query.cursor);
-    
+    const { category, query, limit, uploaded, duration } = req.query;
+    const sortField = req.query.sort === "views" ? "views" : "createdAt";
+    const cursor = decodeCursor(req.query.cursor, sortField);
+
     const matchStage = {
         isPublished: true,
         status: "ready"
     };
-    
+
     if (category) {
         matchStage.category = category;
     }
-    
+
+    if (uploaded) {
+        matchStage.createdAt = { $gte: new Date(Date.now() - UPLOADED_WITHIN_MS[uploaded]) };
+    }
+
+    if (duration) {
+        matchStage.duration = DURATION_RANGES[duration];
+    }
+
     if (query) {
         // match the text literally: raw user input in $regex allowed "(" to crash the query and ".*"-style patterns to scan everything
         const pattern = escapeRegex(query);
@@ -220,12 +234,12 @@ const getAllVideos = asyncHandler(async (req, res) => {
         ];
     }
     
-    // newest first, one page at a time (limit + 1 tells whether another page exists)
+    // newest (or most viewed) first, one page at a time (limit + 1 tells whether another page exists)
     const videos = await Video.aggregate([
         {
-            $match: cursor ? { $and: [matchStage, afterCursor(cursor)] } : matchStage
+            $match: cursor ? { $and: [matchStage, afterCursor(cursor, sortField)] } : matchStage
         },
-        { $sort: NEWEST_FIRST },
+        { $sort: sortField === "views" ? MOST_VIEWED : NEWEST_FIRST },
         { $limit: limit + 1 },
         {
             $lookup:{
@@ -258,7 +272,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
             }
         }
     ])
-    const page = pageOf(videos, limit)
+    const page = pageOf(videos, limit, sortField)
     page.items.forEach(video => {
         video.relativeTime = formatRelativeTime(video.createdAtDiff)
         delete video.createdAtDiff

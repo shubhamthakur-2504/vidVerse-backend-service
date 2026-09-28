@@ -6,8 +6,8 @@ import { validate } from "../../middleWares/validate.middleWare.js";
 import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.js";
 import { withType } from "../../middleWares/type.middleWare.js";
 import { createView as view } from "../../middleWares/view.middleWare.js";
-import { listVideosSchema, uploadVideoSchema, commentSchema, listCommentsSchema } from "../../validators/index.js";
-import { updateVideoV2Schema, relatedVideosSchema, createFromUploadSchema } from "../../validators/v2.js";
+import { uploadVideoSchema, commentSchema, listCommentsSchema } from "../../validators/index.js";
+import { updateVideoV2Schema, relatedVideosSchema, createFromUploadSchema, listVideosV2Schema } from "../../validators/v2.js";
 import { createUploadIntent, createVideoFromUpload } from "../../controllers/directUpload.controllers.js";
 import { getAllVideos, getCategories, uploadVideo, updateVideoDetails, deleteVideo, recordView } from "../../controllers/video.controllers.js";
 import { listCommentsWithStats, createComment } from "../../controllers/comment.controllers.js";
@@ -19,7 +19,7 @@ const router = Router();
 router.param("videoId", validateObjectIdParam);
 router.use(withType("video"));
 
-router.get("/", validate(listVideosSchema), getAllVideos);
+router.get("/", validate(listVideosV2Schema), getAllVideos);
 router.get("/categories", getCategories);
 // direct upload (preferred): signed browser -> Cloudinary upload, then register it
 router.post("/upload-intent", auth, uploadLimiter, createUploadIntent);

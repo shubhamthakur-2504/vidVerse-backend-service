@@ -2,6 +2,8 @@ import asyncHandler from "../utils/asyncHandler.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { apiError } from "../utils/apiError.js";
 import { Tweet } from "../models/tweet.model.js";
+import { Comment } from "../models/comment.model.js";
+import { Like } from "../models/like.model.js";
 import { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited, canEdit } from "../utils/utils.js";
 import { uploadOnCloudinary,deleteFromCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
@@ -66,6 +68,13 @@ const deleteTweet = asyncHandler(async (req, res) => {
         if(!deletedTweet){
             throw new apiError(500,"Something went wrong while deleting tweet")
         }
+        // the post's comments and every reaction on the post or its comments go with it
+        const commentIds = await Comment.find({ tweetId }).distinct("_id")
+        await Promise.all([
+            Like.deleteMany({ targetType: "Tweet", targetId: tweetId }),
+            Like.deleteMany({ targetType: "Comment", targetId: { $in: commentIds } }),
+            Comment.deleteMany({ tweetId }),
+        ])
         res.status(200).json(new apiResponse(200,{ _id: tweetId },"Tweet deleted successfully"))
     } catch (error) {
         throw new apiError(500,"Something went wrong while deleting tweet")

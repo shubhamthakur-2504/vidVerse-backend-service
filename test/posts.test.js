@@ -43,6 +43,23 @@ describe("v2: community posts", () => {
         expect((await api("get", `/posts/${author._id}`)).status).toBe(404);
     });
 
+    it("deletes a post together with its comments and reactions", async () => {
+        const author = await createUser();
+        const fan = await createUser();
+        const post = (await api("post", "/posts").set(authHeader(author)).field("content", "short-lived")).body.data;
+        await api("put", `/reactions/post/${post._id}`).set(authHeader(fan)).send({ value: "like" });
+        const comment = (await api("post", `/posts/${post._id}/comments`).set(authHeader(fan)).send({ content: "hi" })).body.data;
+        await api("put", `/reactions/comment/${comment._id}`).set(authHeader(author)).send({ value: "like" });
+
+        expect((await api("delete", `/posts/${post._id}`).set(authHeader(fan))).status).toBe(403);
+        expect((await api("delete", `/posts/${post._id}`).set(authHeader(author))).status).toBe(200);
+
+        const { Comment } = await import("../src/models/comment.model.js");
+        const { Like } = await import("../src/models/like.model.js");
+        expect(await Comment.countDocuments({ tweetId: post._id })).toBe(0);
+        expect(await Like.countDocuments({ targetId: { $in: [post._id, comment._id] } })).toBe(0);
+    });
+
     it("closes the edit window after 15 minutes", async () => {
         const author = await createUser();
         const old = await Tweet.create({ content: "old", owner: author._id, createdAt: new Date(Date.now() - 20 * 60_000) });

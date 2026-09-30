@@ -9,6 +9,8 @@ import { createUser } from "./helpers.js";
 
 vi.mock("../src/utils/cloudinary.js", () => cloudinaryMock);
 const { Video } = await import("../src/models/video.model.js");
+const { Subscription } = await import("../src/models/subscription.model.js");
+const { Notification } = await import("../src/models/notification.model.js");
 const agenda = (await import("../src/db/agendaSetup.js")).default;
 await import("../src/utils/agendaJobs.js");
 const processVideo = (agenda._definitions ?? agenda.definitions)["process video chunks"].fn;
@@ -32,6 +34,8 @@ describe("video processing job (adaptive HLS)", () => {
     it("publishes a 360p + 720p ladder, generates the thumbnail, stores the duration and deletes the original", async () => {
         const before = tempEntries();
         const owner = await createUser();
+        const fan = await createUser();
+        await Subscription.create({ subscriber: fan._id, channel: owner._id });
         const video = await Video.create({
             videoFileUrl: "https://res.cloudinary.com/test/video/upload/v1/uploads/u1/original.mp4",
             sourcePublicId: "uploads/u1/original",
@@ -53,6 +57,8 @@ describe("video processing job (adaptive HLS)", () => {
         // the direct upload's public id is used as-is (it has more than two path segments)
         expect(cloudinaryMock.deleteFromCloudinary).toHaveBeenCalledWith("uploads/u1/original", "video");
         expect(tempEntries()).toEqual(before);
+        // the finished public video is announced to the channel's subscribers
+        expect(await Notification.find({ type: "video", video: video._id }).distinct("recipient")).toEqual([fan._id]);
     }, 180000);
 
     it("keeps an uploaded thumbnail and retries on failure without leaving files behind", async () => {

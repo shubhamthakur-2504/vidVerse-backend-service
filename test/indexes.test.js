@@ -7,6 +7,7 @@ import { Subscription } from "../src/models/subscription.model.js";
 import { Like } from "../src/models/like.model.js";
 import { User } from "../src/models/user.model.js";
 import { PlayList } from "../src/models/playList.model.js";
+import { Notification } from "../src/models/notification.model.js";
 
 // the stage that reads documents: IXSCAN when an index serves the query, COLLSCAN when it scans everything
 const scanStage = (plan) => {
@@ -17,7 +18,7 @@ const scanStage = (plan) => {
 
 describe("indexes serve the hot queries", () => {
     beforeAll(async () => {
-        await Promise.all([Video, Comment, Tweet, Subscription, Like, User, PlayList].map((model) => model.syncIndexes()));
+        await Promise.all([Video, Comment, Tweet, Subscription, Like, User, PlayList, Notification].map((model) => model.syncIndexes()));
     });
 
     const id = new mongoose.Types.ObjectId();
@@ -33,6 +34,8 @@ describe("indexes serve the hot queries", () => {
         ["like count", () => Like.find({ targetId: id, targetType: "Video", isLike: true })],
         ["watch-history cleanup", () => User.find({ watchHistory: id })],
         ["playlist cleanup", () => PlayList.find({ videos: id })],
+        ["my notifications", () => Notification.find({ recipient: id }).sort({ createdAt: -1, _id: -1 }).limit(20)],
+        ["unread notifications", () => Notification.find({ recipient: id, readAt: null })],
     ])("%s uses an index", async (_label, query) => {
         const plan = await query().explain("queryPlanner");
         expect(scanStage(plan)).toBe("IXSCAN");

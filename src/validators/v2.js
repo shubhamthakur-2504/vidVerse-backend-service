@@ -11,6 +11,10 @@ export const listVideosV2Schema = {
     }),
 };
 
+// GET /me/notifications, POST /me/notifications/read { ids? } (no ids: mark everything read)
+export const listNotificationsSchema = { query: z.object(pageQuery(20)) };
+export const markNotificationsReadSchema = { body: z.object({ ids: z.array(objectId("id")).min(1).max(100).optional() }) };
+
 // GET /auth/username-availability?userName=: the live check on the register form
 export const userNameAvailabilitySchema = { query: z.object({ userName }) };
 

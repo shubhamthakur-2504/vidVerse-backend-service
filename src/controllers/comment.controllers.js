@@ -1,3 +1,4 @@
+import { notifyCommented, removeNotificationsFor } from "../services/notification.service.js";
 import mongoose from "mongoose";
 import asyncHandler from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
@@ -48,6 +49,10 @@ const createComment = asyncHandler(async (req, res) => {
         }
         if((comment.videoId && comment.videoId.equals(id)) || (comment.tweetId && comment.tweetId.equals(id))){
             await comment.save({validateBeforeSave:false})
+            await notifyCommented({
+                commenterId: userId, ownerId: instance.owner, commentId: comment._id,
+                ...(type === 'video' ? { videoId: id } : { postId: id }),
+            })
             comment.editStatus = isEdited(comment.createdAt,comment.updatedAt)
             res.status(200).json(new apiResponse(200,comment,"Comment created successfull"))
         }else{
@@ -74,6 +79,7 @@ const deleteComment = asyncHandler(async (req, res) =>{
         if (!deletedComment) {
             throw new apiError(500, "Failed to delete the comment");
         }
+        await removeNotificationsFor({ comment: commentId })
         res.status(200).json(new apiResponse(200,{ _id: commentId },"Comment deleted successfully"))
     } catch (error) {
         throw new apiError(500,"Something went wrong while deleting comment")
@@ -203,6 +209,7 @@ const createrCommentDelete = asyncHandler(async (req, res) => {
     if(!deletedComment){
         throw new apiError(500,"Something went wrong")
     }
+    await removeNotificationsFor({ comment: commentId })
     res.status(200).json(new apiResponse(200,{ _id: commentId },"Comment deleted successfully"))
     
 }) 
@@ -316,6 +323,7 @@ const removeComment = asyncHandler(async (req, res) => {
     }
     await Comment.deleteOne({ _id: comment._id })
     await Like.deleteMany({ targetType: "Comment", targetId: comment._id })
+    await removeNotificationsFor({ comment: comment._id })
     return res.status(200).json(new apiResponse(200,{ _id: comment._id },"Comment deleted successfully"))
 })
 

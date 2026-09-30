@@ -4,6 +4,7 @@ import { apiError } from "../utils/apiError.js";
 import { Tweet } from "../models/tweet.model.js";
 import { Comment } from "../models/comment.model.js";
 import { Like } from "../models/like.model.js";
+import { removeNotificationsFor } from "../services/notification.service.js";
 import { getCreatedAtDiffField, formatRelativeTime, extractPublicId, isEdited, canEdit } from "../utils/utils.js";
 import { uploadOnCloudinary,deleteFromCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
@@ -74,6 +75,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
             Like.deleteMany({ targetType: "Tweet", targetId: tweetId }),
             Like.deleteMany({ targetType: "Comment", targetId: { $in: commentIds } }),
             Comment.deleteMany({ tweetId }),
+            removeNotificationsFor({ post: tweetId }),
         ])
         res.status(200).json(new apiResponse(200,{ _id: tweetId },"Tweet deleted successfully"))
     } catch (error) {

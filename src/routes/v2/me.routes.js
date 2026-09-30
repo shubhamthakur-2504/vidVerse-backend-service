@@ -11,7 +11,8 @@ import { getMyVideos } from "../../controllers/video.controllers.js";
 import { getStudioOverview, getMyVideo } from "../../controllers/studio.controllers.js";
 import { removeFromWatchHistory, clearWatchHistory } from "../../controllers/library.controllers.js";
 import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.js";
-import { subscriptionFeedSchema } from "../../validators/v2.js";
+import { subscriptionFeedSchema, listNotificationsSchema, markNotificationsReadSchema } from "../../validators/v2.js";
+import { listNotifications, getUnreadCount, markNotificationsRead } from "../../controllers/notification.controllers.js";
 
 // /api/v2/me: the signed-in user
 const router = Router();
@@ -33,5 +34,9 @@ router.get("/subscriptions/videos", validate(subscriptionFeedSchema), getSubscri
 router.get("/videos", getMyVideos);
 router.get("/videos/:videoId", getMyVideo);
 router.get("/studio", getStudioOverview);
+
+router.get("/notifications", validate(listNotificationsSchema), listNotifications);
+router.get("/notifications/unread-count", getUnreadCount);
+router.post("/notifications/read", validate(markNotificationsReadSchema), markNotificationsRead);
 
 export default router;

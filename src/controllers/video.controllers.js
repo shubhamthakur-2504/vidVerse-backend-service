@@ -17,6 +17,7 @@ import { PlayList } from "../models/playList.model.js";
 import agenda from "../db/agendaSetup.js";
 import { NEWEST_FIRST, MOST_VIEWED, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 import { logger } from "../utils/logger.js";
+import { removeNotificationsFor } from "../services/notification.service.js";
 
 
 
@@ -179,6 +180,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
         View.deleteMany({ targetType: "Video", targetId: video._id }),
         PlayList.updateMany({ videos: video._id }, { $pull: { videos: video._id } }),
         User.updateMany({ watchHistory: video._id }, { $pull: { watchHistory: video._id } }),
+        removeNotificationsFor({ video: video._id }),
     ])
 
     // 3. media, best-effort: the DB is already consistent, so failures are logged instead of failing the request

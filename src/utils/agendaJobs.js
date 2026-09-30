@@ -10,6 +10,7 @@ import { Tweet } from "../models/tweet.model.js";
 import { View } from "../models/view.model.js";
 import { extractPublicId } from "./utils.js";
 import { logger } from "./logger.js";
+import { notifyNewVideo } from "../services/notification.service.js";
 
 const MAX_PROCESSING_ATTEMPTS = 3
 
@@ -58,6 +59,8 @@ agenda.define("process video chunks", async (job) => {
         // the original upload is a video asset (not the default image type); direct uploads know their exact public id
         await deleteFromCloudinary(video.sourcePublicId ?? extractPublicId(originalVideoUrl), "video");
         log.info("video is ready")
+        // private uploads stay quiet; subscribers only hear about videos they can watch
+        if (updated.isPublished) await notifyNewVideo(updated)
     } catch (error) {
         log.error({ err: error }, "video processing failed")
         // drop any segments uploaded before the failure so a retry starts clean

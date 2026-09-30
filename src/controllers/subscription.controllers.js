@@ -5,6 +5,7 @@ import { Subscription } from "../models/subscription.model.js";
 import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
 import { Video } from "../models/video.model.js";
+import { notifySubscribed } from "../services/notification.service.js";
 import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 
 const subscribe = asyncHandler(async (req, res) => {
@@ -24,6 +25,7 @@ const subscribe = asyncHandler(async (req, res) => {
             subscriber: req.user._id,
             channel: channelId
         })
+        await notifySubscribed(req.user._id, channelId)
         return res.status(201).json(new apiResponse(201, subscription, "Subscribed successfully"))
     } catch (error) {
         if(error.code === 11000){
@@ -124,6 +126,7 @@ const putSubscription = asyncHandler(async (req, res) => {
         { upsert: true }
     )
     const created = result.upsertedCount === 1
+    if (created) await notifySubscribed(req.user._id, channelId)
     return res.status(created ? 201 : 200).json(new apiResponse(created ? 201 : 200, { channel: channelId, isSubscribed: true }, created ? "Subscribed successfully" : "Already subscribed"))
 })
 

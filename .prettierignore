@@ -1,3 +1,5 @@
 node_modules
 public
 package-lock.json
+# local-only helper scripts (never committed)
+scripts

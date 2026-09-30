@@ -8,6 +8,7 @@ import { createSession, rotateSession, revokeSession, revokeOtherSessions } from
 import { setAuthCookies, clearAuthCookies } from "../utils/authCookies.js";
 import fs from "fs"
 import { logger } from "../utils/logger.js";
+import { sendEmailVerification } from "./account.controllers.js";
 
 function deleteLocalFile(filePath) {
     try {
@@ -64,6 +65,8 @@ const registerUser = asyncHandler(async (req, res) => {
         if (!createdUser) {
             throw new apiError(500, "Something went wrong while registering user")
         }
+        // best effort: the account works without it, and the link can be re-sent from settings
+        await sendEmailVerification(createdUser)
 
         return res.status(201).json(new apiResponse(201, createdUser, "User registered successfully"))
     } catch (error) {

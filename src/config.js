@@ -37,6 +37,12 @@ const envSchema = z.object({
     MAX_IMAGE_SIZE_MB: positiveNumber(10),
     MAX_VIDEO_SIZE_MB: positiveNumber(500),
 
+    // public site address used in emailed links (verify email, reset password); defaults to the first CLIENT_URLS entry
+    APP_URL: z.url("APP_URL must be a URL").optional(),
+    // outgoing mail, e.g. smtp://user:pass@smtp.example.com:587. Unset: development logs each email, production sends none
+    SMTP_URL: z.string().trim().optional(),
+    MAIL_FROM: z.string().trim().min(1).default("VidVerse <no-reply@vidverse.local>"),
+
     // default: silent in tests, info otherwise
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
@@ -74,6 +80,11 @@ export const config = Object.freeze({
         cloudName: env.CLOUDINARY_CLOUD_NAME,
         apiKey: env.CLOUDINARY_API_KEY,
         apiSecret: env.CLOUDINARY_API_SECRET,
+    }),
+    appUrl: (env.APP_URL ?? env.CLIENT_URLS.split(",").map((url) => url.trim()).find(Boolean) ?? "http://localhost:3000").replace(/\/+$/, ""),
+    mail: Object.freeze({
+        smtpUrl: env.SMTP_URL || null,
+        from: env.MAIL_FROM,
     }),
     uploads: Object.freeze({
         // whole bytes: busboy detects the limit with an exact equality, so a fractional limit would never trigger

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { objectId, text, optionalText, optionalLongText, booleanLike, pageQuery, category, userName } from "./common.js";
+import { objectId, text, optionalText, optionalLongText, booleanLike, pageQuery, category, userName, newPassword } from "./common.js";
 import { updateVideoSchema, listVideosSchema } from "./index.js";
 
 // GET /videos: the feed and search results, with the search filters
@@ -13,6 +13,16 @@ export const listVideosV2Schema = {
 
 // GET /auth/username-availability?userName=: the live check on the register form
 export const userNameAvailabilitySchema = { query: z.object({ userName }) };
+
+// one-time tokens from emailed links (base64url, 43 characters)
+const emailedToken = z.string({ error: "Token is required" }).trim().regex(/^[A-Za-z0-9_-]{20,200}$/, "Invalid token");
+
+// POST /auth/verify-email
+export const verifyEmailSchema = { body: z.object({ token: emailedToken }) };
+// POST /auth/forgot-password
+export const forgotPasswordSchema = { body: z.object({ email: z.email("Enter a valid email address").trim().toLowerCase() }) };
+// POST /auth/reset-password
+export const resetPasswordSchema = { body: z.object({ token: emailedToken, password: newPassword }) };
 
 // PUT /reactions/:targetType/:id
 export const setReactionSchema = {

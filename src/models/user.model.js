@@ -17,6 +17,11 @@ const userSchema = new Schema({
         lowercase:true,
         trim:true
     },
+    // set when the owner opens the emailed verification link (or a password reset link); null until then
+    emailVerifiedAt:{
+        type:Date,
+        default:null
+    },
     fullName:{
         type:String,
         required:[true,'Full name is required'],

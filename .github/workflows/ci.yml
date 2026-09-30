@@ -1,26 +1,26 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
+    push:
+        branches: [main, develop]
+    pull_request:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22 # matches the Dockerfile
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      # mongodb-memory-server downloads a MongoDB binary on first use; keep it between runs
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/mongodb-binaries
-          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      # tests run against an in-memory MongoDB with Cloudinary mocked: no secrets or .env needed
-      - run: npm test
+    test:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22 # matches the Dockerfile
+                  cache: npm
+            - run: npm ci
+            - run: npm run lint
+            # mongodb-memory-server downloads a MongoDB binary on first use; keep it between runs
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.cache/mongodb-binaries
+                  key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+            # tests run against an in-memory MongoDB with Cloudinary mocked: no secrets or .env needed
+            - run: npm test

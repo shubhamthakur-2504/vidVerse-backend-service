@@ -9,7 +9,11 @@ if (process.env.NODE_ENV !== "test") {
     dotenv.config({ path: "./.env", quiet: true });
 }
 
-const required = (name) => z.string({ error: `${name} is required` }).trim().min(1, `${name} is required`);
+const required = (name) =>
+    z
+        .string({ error: `${name} is required` })
+        .trim()
+        .min(1, `${name} is required`);
 const positiveNumber = (fallback) => z.coerce.number().positive().default(fallback);
 
 const envSchema = z.object({
@@ -49,7 +53,9 @@ const envSchema = z.object({
 
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
-    const problems = parsed.error.issues.map((issue) => `  - ${issue.path.join(".") || "env"}: ${issue.message}`).join("\n");
+    const problems = parsed.error.issues
+        .map((issue) => `  - ${issue.path.join(".") || "env"}: ${issue.message}`)
+        .join("\n");
     throw new Error(`Invalid environment configuration:\n${problems}\nSee .env.sample for the expected variables.`);
 }
 const env = parsed.data;
@@ -62,7 +68,9 @@ export const config = Object.freeze({
     isDevelopment: env.NODE_ENV === "development",
     port: env.PORT,
     logLevel: env.LOG_LEVEL ?? (env.NODE_ENV === "test" ? "silent" : "info"),
-    clientUrls: env.CLIENT_URLS.split(",").map((url) => url.trim()).filter(Boolean),
+    clientUrls: env.CLIENT_URLS.split(",")
+        .map((url) => url.trim())
+        .filter(Boolean),
     mongodbUrl: env.MONGODB_URL,
     trustProxy: !env.TRUST_PROXY ? false : /^\d+$/.test(env.TRUST_PROXY) ? Number(env.TRUST_PROXY) : env.TRUST_PROXY,
     jwt: Object.freeze({
@@ -81,7 +89,13 @@ export const config = Object.freeze({
         apiKey: env.CLOUDINARY_API_KEY,
         apiSecret: env.CLOUDINARY_API_SECRET,
     }),
-    appUrl: (env.APP_URL ?? env.CLIENT_URLS.split(",").map((url) => url.trim()).find(Boolean) ?? "http://localhost:3000").replace(/\/+$/, ""),
+    appUrl: (
+        env.APP_URL ??
+        env.CLIENT_URLS.split(",")
+            .map((url) => url.trim())
+            .find(Boolean) ??
+        "http://localhost:3000"
+    ).replace(/\/+$/, ""),
     mail: Object.freeze({
         smtpUrl: env.SMTP_URL || null,
         from: env.MAIL_FROM,

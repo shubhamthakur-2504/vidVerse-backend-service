@@ -14,7 +14,10 @@ const walk = async (url, pick = (item) => item._id, headers = {}) => {
     const pages = [];
     let cursor = null;
     do {
-        const res = await request(app).get(url).set(headers).query(cursor ? { cursor } : {});
+        const res = await request(app)
+            .get(url)
+            .set(headers)
+            .query(cursor ? { cursor } : {});
         expect(res.status).toBe(200);
         pages.push(res.body.data.items.map(pick));
         cursor = res.body.data.nextCursor;
@@ -51,7 +54,10 @@ describe("cursor pagination", () => {
             await Comment.create({ content: `c${i}`, videoId: video._id, userId: user._id, createdAt: minutesAgo(i) });
             await Tweet.create({ content: `t${i}`, owner: user._id, createdAt: minutesAgo(i) });
         }
-        expect(await walk(`/api/v1/videos/getallcomments/${video._id}?limit=2`, (c) => c.content)).toEqual([["c1", "c2"], ["c3"]]);
+        expect(await walk(`/api/v1/videos/getallcomments/${video._id}?limit=2`, (c) => c.content)).toEqual([
+            ["c1", "c2"],
+            ["c3"],
+        ]);
         expect(await walk("/api/v1/tweets/getalltweet?limit=2", (t) => t.content)).toEqual([["t1", "t2"], ["t3"]]);
     });
 
@@ -61,7 +67,11 @@ describe("cursor pagination", () => {
             const channel = await createUser({ userName: `channel${i}` });
             await Subscription.create({ subscriber: me._id, channel: channel._id, createdAt: minutesAgo(i) });
         }
-        const pages = await walk("/api/v1/subscription/mysubscriptions?limit=2", (s) => s.channel.userName, authHeader(me));
+        const pages = await walk(
+            "/api/v1/subscription/mysubscriptions?limit=2",
+            (s) => s.channel.userName,
+            authHeader(me)
+        );
         expect(pages).toEqual([["channel1", "channel2"], ["channel3"]]);
     });
 

@@ -15,11 +15,15 @@ export const hashToken = (token) => crypto.createHash("sha256").update(token).di
 const expiryOf = (token) => new Date(JWT.decode(token).exp * 1000);
 
 const signAccessToken = (user, sessionId) =>
-    JWT.sign({ id: user._id, user: user.userName, sid: String(sessionId) }, config.jwt.accessSecret, { expiresIn: config.jwt.accessExpiry });
+    JWT.sign({ id: user._id, user: user.userName, sid: String(sessionId) }, config.jwt.accessSecret, {
+        expiresIn: config.jwt.accessExpiry,
+    });
 
 const signRefreshToken = (user, sessionId) =>
     // jti makes every issued token unique, even two issued in the same second
-    JWT.sign({ id: user._id, sid: String(sessionId), jti: crypto.randomUUID() }, config.jwt.refreshSecret, { expiresIn: config.jwt.refreshExpiry });
+    JWT.sign({ id: user._id, sid: String(sessionId), jti: crypto.randomUUID() }, config.jwt.refreshSecret, {
+        expiresIn: config.jwt.refreshExpiry,
+    });
 
 const clientInfo = (req) => ({
     userAgent: (req.get("user-agent") || "unknown").slice(0, 300),
@@ -39,7 +43,12 @@ const tokensFor = (user, sessionId, refreshToken) => {
 
 // login: a new session for this device
 export const createSession = async (user, req) => {
-    const session = new Session({ userId: user._id, ...clientInfo(req), refreshTokenHash: "pending", expiresAt: new Date() });
+    const session = new Session({
+        userId: user._id,
+        ...clientInfo(req),
+        refreshTokenHash: "pending",
+        expiresAt: new Date(),
+    });
     const refreshToken = signRefreshToken(user, session._id);
     session.refreshTokenHash = hashToken(refreshToken);
     session.expiresAt = expiryOf(refreshToken);
@@ -93,8 +102,14 @@ export const rotateSession = async (incomingToken, req) => {
 
         const withinGrace = existing.previousTokenHash === incomingHash && now - existing.rotatedAt < ROTATION_GRACE_MS;
         if (!withinGrace) {
-            await Session.updateOne({ _id: existing._id }, { $set: { revokedAt: now, revokedReason: "reuse-detected" } });
-            logger.warn({ userId: String(user._id), sessionId: String(existing._id), ip: req.ip }, "refresh token reuse detected, session revoked");
+            await Session.updateOne(
+                { _id: existing._id },
+                { $set: { revokedAt: now, revokedReason: "reuse-detected" } }
+            );
+            logger.warn(
+                { userId: String(user._id), sessionId: String(existing._id), ip: req.ip },
+                "refresh token reuse detected, session revoked"
+            );
             throw new apiError(401, "Session revoked for security reasons, please log in again");
         }
         // a second tab refreshed with the same token moments ago: issue it a token too, keep the grace token
@@ -110,7 +125,10 @@ export const rotateSession = async (incomingToken, req) => {
 };
 
 export const revokeSession = (sessionId, userId, reason = "revoked") =>
-    Session.updateOne({ _id: sessionId, userId, revokedAt: null }, { $set: { revokedAt: new Date(), revokedReason: reason } });
+    Session.updateOne(
+        { _id: sessionId, userId, revokedAt: null },
+        { $set: { revokedAt: new Date(), revokedReason: reason } }
+    );
 
 export const revokeOtherSessions = (userId, keepSessionId, reason = "logout-others") =>
     Session.updateMany(
@@ -125,4 +143,5 @@ export const listActiveSessions = (userId) =>
         .lean();
 
 // used by the auth middleware: access tokens die with their session, not 15 minutes later
-export const isSessionActive = (sessionId) => Session.exists({ _id: sessionId, revokedAt: null, expiresAt: { $gt: new Date() } });
+export const isSessionActive = (sessionId) =>
+    Session.exists({ _id: sessionId, revokedAt: null, expiresAt: { $gt: new Date() } });

@@ -5,7 +5,10 @@ import { config } from "../config.js";
 // public id chosen here. Cloudinary rejects the signature after about an hour.
 export const signVideoUpload = (publicId) => {
     const timestamp = Math.floor(Date.now() / 1000);
-    const signature = cloudinary.utils.api_sign_request({ public_id: publicId, timestamp }, config.cloudinary.apiSecret);
+    const signature = cloudinary.utils.api_sign_request(
+        { public_id: publicId, timestamp },
+        config.cloudinary.apiSecret
+    );
     return {
         uploadUrl: `https://api.cloudinary.com/v1_1/${config.cloudinary.cloudName}/video/upload`,
         cloudName: config.cloudinary.cloudName,

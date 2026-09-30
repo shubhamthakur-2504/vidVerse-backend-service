@@ -13,7 +13,10 @@ const cookie = (res, name) => res.headers["set-cookie"]?.find((c) => c.startsWit
 const value = (res, name) => cookie(res, name)?.split(";")[0];
 
 const login = async (userName, userAgent = "device-a") =>
-    request(app).post("/api/v1/user/login").set("User-Agent", userAgent).send({ identifier: userName, password: "password123" });
+    request(app)
+        .post("/api/v1/user/login")
+        .set("User-Agent", userAgent)
+        .send({ identifier: userName, password: "password123" });
 const refresh = (refreshCookie) => request(app).post("/api/v1/user/refreshaccess").set("Cookie", refreshCookie);
 const me = (accessCookie) => request(app).get("/api/v1/user/getcurrentuser").set("Cookie", accessCookie);
 
@@ -85,7 +88,9 @@ describe("per-device sessions with refresh token rotation", () => {
         const laptop = await login(user.userName, "laptop");
         const phone = await login(user.userName, "phone");
 
-        expect((await request(app).post("/api/v1/user/logout").set("Cookie", value(laptop, "accessToken"))).status).toBe(200);
+        expect(
+            (await request(app).post("/api/v1/user/logout").set("Cookie", value(laptop, "accessToken"))).status
+        ).toBe(200);
 
         expect((await me(value(laptop, "accessToken"))).status).toBe(401);
         expect((await refresh(value(laptop, "refreshToken"))).status).toBe(401);
@@ -111,7 +116,9 @@ describe("per-device sessions with refresh token rotation", () => {
 
     it("migrates a refresh token issued before sessions existed", async () => {
         const user = await createUser();
-        const legacy = JWT.sign({ id: user._id, user: user.userName }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+        const legacy = JWT.sign({ id: user._id, user: user.userName }, process.env.JWT_REFRESH_SECRET, {
+            expiresIn: "7d",
+        });
         await User.updateOne({ _id: user._id }, { $set: { refreshToken: legacy } });
 
         const res = await refresh(`refreshToken=${legacy}`);

@@ -38,8 +38,16 @@ describe("creator studio", () => {
     it("shows your own video in any status, and nobody else's", async () => {
         const me = await createUser();
         const processing = await createVideo(me, { status: "processing" });
-        expect((await request(app).get(`/api/v2/me/videos/${processing._id}`).set(authHeader(me))).body.data.status).toBe("processing");
-        expect((await request(app).get(`/api/v2/me/videos/${processing._id}`).set(authHeader(await createUser()))).status).toBe(404);
+        expect(
+            (await request(app).get(`/api/v2/me/videos/${processing._id}`).set(authHeader(me))).body.data.status
+        ).toBe("processing");
+        expect(
+            (
+                await request(app)
+                    .get(`/api/v2/me/videos/${processing._id}`)
+                    .set(authHeader(await createUser()))
+            ).status
+        ).toBe(404);
     });
 
     it("reprocesses only failed videos and only for the owner", async () => {
@@ -47,11 +55,20 @@ describe("creator studio", () => {
         const failed = await createVideo(me, { status: "failed" });
         const ready = await createVideo(me);
 
-        expect((await request(app).post(`/api/v2/videos/${failed._id}/reprocess`).set(authHeader(await createUser()))).status).toBe(404);
+        expect(
+            (
+                await request(app)
+                    .post(`/api/v2/videos/${failed._id}/reprocess`)
+                    .set(authHeader(await createUser()))
+            ).status
+        ).toBe(404);
         const res = await request(app).post(`/api/v2/videos/${failed._id}/reprocess`).set(authHeader(me));
         expect(res.status).toBe(202);
         expect((await Video.findById(failed._id)).status).toBe("processing");
-        expect(agenda.schedule).toHaveBeenCalledWith("in 5 seconds", "process video chunks", { videoId: failed._id, attempt: 1 });
+        expect(agenda.schedule).toHaveBeenCalledWith("in 5 seconds", "process video chunks", {
+            videoId: failed._id,
+            attempt: 1,
+        });
         expect((await request(app).post(`/api/v2/videos/${ready._id}/reprocess`).set(authHeader(me))).status).toBe(409);
     });
 

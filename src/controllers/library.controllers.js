@@ -31,7 +31,10 @@ const getMyPlaylists = asyncHandler(async (req, res) => {
         { $sort: { updatedAt: -1 } },
         {
             $project: {
-                title: 1, description: 1, thumbnailUrl: 1, updatedAt: 1,
+                title: 1,
+                description: 1,
+                thumbnailUrl: 1,
+                updatedAt: 1,
                 videoCount: { $size: "$videos" },
                 ...(videoId && { hasVideo: { $in: [videoId, "$videos"] } }),
             },
@@ -53,14 +56,20 @@ const getPlaylistWithVideos = asyncHandler(async (req, res) => {
         { $match: { _id: playlistId } },
         {
             $lookup: {
-                from: "users", localField: "ownerId", foreignField: "_id", as: "owner",
+                from: "users",
+                localField: "ownerId",
+                foreignField: "_id",
+                as: "owner",
                 pipeline: [{ $project: OWNER_FIELDS }],
             },
         },
         { $unwind: "$owner" },
         {
             $lookup: {
-                from: "videos", localField: "videos", foreignField: "_id", as: "items",
+                from: "videos",
+                localField: "videos",
+                foreignField: "_id",
+                as: "items",
                 let: { ids: "$videos" },
                 pipeline: [
                     { $match: visible },
@@ -68,7 +77,10 @@ const getPlaylistWithVideos = asyncHandler(async (req, res) => {
                     { $sort: { position: 1 } },
                     {
                         $lookup: {
-                            from: "users", localField: "owner", foreignField: "_id", as: "owner",
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
                             pipeline: [{ $project: OWNER_FIELDS }],
                         },
                     },
@@ -79,7 +91,12 @@ const getPlaylistWithVideos = asyncHandler(async (req, res) => {
         },
         {
             $project: {
-                title: 1, description: 1, thumbnailUrl: 1, createdAt: 1, updatedAt: 1, owner: 1,
+                title: 1,
+                description: 1,
+                thumbnailUrl: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                owner: 1,
                 videos: "$items",
             },
         },

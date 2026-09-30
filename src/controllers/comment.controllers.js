@@ -12,66 +12,68 @@ import { logger } from "../utils/logger.js";
 import { reactionCountsLookup, viewerReactionLookup, countFrom, reactionOf } from "./watch.controllers.js";
 import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagination.js";
 // common functions
-const getModel= (type) => {
-    if (type === 'video') {
-        return Video
-    } else if (type === 'tweet') {
-       return Tweet
+const getModel = (type) => {
+    if (type === "video") {
+        return Video;
+    } else if (type === "tweet") {
+        return Tweet;
     } else {
-        throw new apiError(400, "Invalid type. Must be 'video' or 'tweet'.")
+        throw new apiError(400, "Invalid type. Must be 'video' or 'tweet'.");
     }
-}
+};
 
 // create a comment on video or tweet
 const createComment = asyncHandler(async (req, res) => {
-    const {content} = req.body
-    const type = req?.type
-    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
-    const userId = req.user._id
-    const model = getModel(type)
-    
-    if(!content?.trim()){
-        throw new apiError(400,"content is required")
-    }
-    const instance  = await model.findById(id)
-    if(!instance ){
-        throw new apiError(404,`${type === "video" ? "Video" : "Tweet"} not found`)
-    }
-    try{
-        const comment = await Comment.create({
-            content:content,
-            userId:userId
-        })
-        if (type === 'video') {
-            comment.videoId = id
-        }else{
-            comment.tweetId = id
-        }
-        if((comment.videoId && comment.videoId.equals(id)) || (comment.tweetId && comment.tweetId.equals(id))){
-            await comment.save({validateBeforeSave:false})
-            await notifyCommented({
-                commenterId: userId, ownerId: instance.owner, commentId: comment._id,
-                ...(type === 'video' ? { videoId: id } : { postId: id }),
-            })
-            comment.editStatus = isEdited(comment.createdAt,comment.updatedAt)
-            res.status(200).json(new apiResponse(200,comment,"Comment created successfull"))
-        }else{
-            await Comment.findByIdAndDelete(comment._id)
-            throw new apiError(500, "fail to create a comment")
-        }
-    }catch(error){
-        throw new apiError(500,"Something went wrong while creating comment")
-    }
-})
+    const { content } = req.body;
+    const type = req?.type;
+    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id);
+    const userId = req.user._id;
+    const model = getModel(type);
 
-const deleteComment = asyncHandler(async (req, res) =>{
-    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
-    const comment = await Comment.findById(commentId)
-    if(!comment){
-        throw new apiError(404,"Comment not found")
+    if (!content?.trim()) {
+        throw new apiError(400, "content is required");
     }
-    if(!comment.userId.equals(req.user._id)){
-        throw new apiError(403,"Unauthorized to delete this comment")
+    const instance = await model.findById(id);
+    if (!instance) {
+        throw new apiError(404, `${type === "video" ? "Video" : "Tweet"} not found`);
+    }
+    try {
+        const comment = await Comment.create({
+            content: content,
+            userId: userId,
+        });
+        if (type === "video") {
+            comment.videoId = id;
+        } else {
+            comment.tweetId = id;
+        }
+        if ((comment.videoId && comment.videoId.equals(id)) || (comment.tweetId && comment.tweetId.equals(id))) {
+            await comment.save({ validateBeforeSave: false });
+            await notifyCommented({
+                commenterId: userId,
+                ownerId: instance.owner,
+                commentId: comment._id,
+                ...(type === "video" ? { videoId: id } : { postId: id }),
+            });
+            comment.editStatus = isEdited(comment.createdAt, comment.updatedAt);
+            res.status(200).json(new apiResponse(200, comment, "Comment created successfull"));
+        } else {
+            await Comment.findByIdAndDelete(comment._id);
+            throw new apiError(500, "fail to create a comment");
+        }
+    } catch (error) {
+        throw new apiError(500, "Something went wrong while creating comment");
+    }
+});
+
+const deleteComment = asyncHandler(async (req, res) => {
+    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id);
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+        throw new apiError(404, "Comment not found");
+    }
+    if (!comment.userId.equals(req.user._id)) {
+        throw new apiError(403, "Unauthorized to delete this comment");
     }
     try {
         const deletedComment = await Comment.findByIdAndDelete(commentId);
@@ -79,116 +81,113 @@ const deleteComment = asyncHandler(async (req, res) =>{
         if (!deletedComment) {
             throw new apiError(500, "Failed to delete the comment");
         }
-        await removeNotificationsFor({ comment: commentId })
-        res.status(200).json(new apiResponse(200,{ _id: commentId },"Comment deleted successfully"))
+        await removeNotificationsFor({ comment: commentId });
+        res.status(200).json(new apiResponse(200, { _id: commentId }, "Comment deleted successfully"));
     } catch (error) {
-        throw new apiError(500,"Something went wrong while deleting comment")
+        throw new apiError(500, "Something went wrong while deleting comment");
     }
-})
+});
 
 const getAllComments = asyncHandler(async (req, res) => {
-    const type = req.type
-    const id =  mongoose.Types.ObjectId.createFromHexString(req.params.id)
-    const model = getModel(type)
-    const key = type === "video" ? "videoId" : "tweetId"
-    
-    const instance = await model.findById(id)
-    
-    if(!instance){
-        throw new apiError(404,`${type === "video" ? "Video" : "Tweet"} not found`)
+    const type = req.type;
+    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id);
+    const model = getModel(type);
+    const key = type === "video" ? "videoId" : "tweetId";
+
+    const instance = await model.findById(id);
+
+    if (!instance) {
+        throw new apiError(404, `${type === "video" ? "Video" : "Tweet"} not found`);
     }
-    const cursor = decodeCursor(req.query.cursor)
-    const { limit } = req.query
+    const cursor = decodeCursor(req.query.cursor);
+    const { limit } = req.query;
     try {
         // newest first, one page at a time (limit + 1 tells whether another page exists)
         const allComment = await Comment.aggregate([
             {
-                $match:{
-                    [key]:id,
-                    ...afterCursor(cursor)
-                }
+                $match: {
+                    [key]: id,
+                    ...afterCursor(cursor),
+                },
             },
             { $sort: NEWEST_FIRST },
             { $limit: limit + 1 },
             {
-                $lookup:{
-                    from:"users",
-                    localField:"userId",
-                    foreignField:"_id",
-                    as:"userDetails"
-                }
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "userDetails",
+                },
             },
             {
-                $unwind:{
-                    path:"$userDetails",
-                    preserveNullAndEmptyArrays:true
-                }
-                
+                $unwind: {
+                    path: "$userDetails",
+                    preserveNullAndEmptyArrays: true,
+                },
             },
             getCreatedAtDiffField(),
             {
-                $project:{
-                    userId:1,
-                    content:1,
-                    createdAtDiff:1,
-                    createdAt:1,
-                    updatedAt:1,
-                    "userDetails.userName":1,
-                    "userDetails.avatarUrl":1
-                }
-            }
-        ])
+                $project: {
+                    userId: 1,
+                    content: 1,
+                    createdAtDiff: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    "userDetails.userName": 1,
+                    "userDetails.avatarUrl": 1,
+                },
+            },
+        ]);
         // the cursor is built from createdAt, so page before formatting removes it
-        const page = pageOf(allComment, limit)
-        page.items = page.items.map(comment => {
-            comment.editStatus = isEdited(comment.createdAt,comment.updatedAt)
-            comment.relativeTime = formatRelativeTime(comment.createdAtDiff)
-            delete comment.createdAtDiff
-            delete comment.updatedAt
-            delete comment.createdAt
-            return comment
-        })
+        const page = pageOf(allComment, limit);
+        page.items = page.items.map((comment) => {
+            comment.editStatus = isEdited(comment.createdAt, comment.updatedAt);
+            comment.relativeTime = formatRelativeTime(comment.createdAtDiff);
+            delete comment.createdAtDiff;
+            delete comment.updatedAt;
+            delete comment.createdAt;
+            return comment;
+        });
 
-        res.status(200).json(new apiResponse(200,page,"Comment fetched successfully"))
-        
+        res.status(200).json(new apiResponse(200, page, "Comment fetched successfully"));
     } catch (error) {
-        throw new apiError(500,"Something went wrong while fetching comments")
+        throw new apiError(500, "Something went wrong while fetching comments");
     }
-})
+});
 
 const editComment = asyncHandler(async (req, res) => {
-    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
-    const {content} = req.body
+    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id);
+    const { content } = req.body;
 
-    if(!content?.trim()){
-        throw new apiError(400, "Content cannot be empty")
+    if (!content?.trim()) {
+        throw new apiError(400, "Content cannot be empty");
     }
-    const comment = await Comment.findById(commentId)
+    const comment = await Comment.findById(commentId);
 
-    if(!comment){
-        throw new apiError(404, "Comment not found")
+    if (!comment) {
+        throw new apiError(404, "Comment not found");
     }
-    if(!comment.userId.equals(req.user._id)){
-        throw new apiError(403, "Unauthorized to edit")
+    if (!comment.userId.equals(req.user._id)) {
+        throw new apiError(403, "Unauthorized to edit");
     }
     try {
-        comment.content = content
-        await comment.save({validateBeforeSave:false})
-        res.status(200).json(new apiResponse(200,comment,"Comment edited successfully"))
+        comment.content = content;
+        await comment.save({ validateBeforeSave: false });
+        res.status(200).json(new apiResponse(200, comment, "Comment edited successfully"));
     } catch (error) {
-        throw new apiError(500,"Something went wrong while editing comment")
+        throw new apiError(500, "Something went wrong while editing comment");
     }
-
-})
+});
 
 const createrCommentDelete = asyncHandler(async (req, res) => {
-    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id)
-    const type = req.type
-    const model = getModel(type)
-    const comment = await Comment.findById(commentId)
+    const commentId = mongoose.Types.ObjectId.createFromHexString(req.params.id);
+    const type = req.type;
+    const model = getModel(type);
+    const comment = await Comment.findById(commentId);
 
-    if(!comment){
-        throw new apiError(404,"Comment not found")
+    if (!comment) {
+        throw new apiError(404, "Comment not found");
     }
 
     const instanceId = type === "video" ? comment.videoId : comment.tweetId;
@@ -196,100 +195,107 @@ const createrCommentDelete = asyncHandler(async (req, res) => {
         throw new apiError(400, "Invalid comment reference");
     }
 
-    const instance = await model.findById(instanceId)
+    const instance = await model.findById(instanceId);
     if (!instance) {
         throw new apiError(404, `${type === "video" ? "Video" : "Tweet"} not found`);
     }
 
-    if(!instance.owner.equals(req.user._id)){
-        throw new apiError(403, "Unauthorized to delete comment")
+    if (!instance.owner.equals(req.user._id)) {
+        throw new apiError(403, "Unauthorized to delete comment");
     }
 
-    const deletedComment = await Comment.findByIdAndDelete(commentId)
-    if(!deletedComment){
-        throw new apiError(500,"Something went wrong")
+    const deletedComment = await Comment.findByIdAndDelete(commentId);
+    if (!deletedComment) {
+        throw new apiError(500, "Something went wrong");
     }
-    await removeNotificationsFor({ comment: commentId })
-    res.status(200).json(new apiResponse(200,{ _id: commentId },"Comment deleted successfully"))
-    
-}) 
+    await removeNotificationsFor({ comment: commentId });
+    res.status(200).json(new apiResponse(200, { _id: commentId }, "Comment deleted successfully"));
+});
 
 const getCommentDetails = asyncHandler(async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
-        throw new apiError(400, "Invalid comment id")
+        throw new apiError(400, "Invalid comment id");
     }
-    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
+    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id);
     try {
         const comment = await Comment.aggregate([
             {
-                $match:{_id:id}
+                $match: { _id: id },
             },
             {
-                $lookup:{
-                    from:"users",
-                    localField:"userId",
-                    foreignField:"_id",
-                    as:"owner"
-                }
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "owner",
+                },
             },
             {
-                $unwind:"$owner"
+                $unwind: "$owner",
             },
             getCreatedAtDiffField(),
             {
-                $project:{
-                    content:1,
-                    createdAt:1,
-                    createdAtDiff:1,
-                    updatedAt:1,
-                    owner:{
-                        userName:1,
-                        avatarUrl:1
-                    }
-                }
-            }
-        ])
-        if(comment.length === 0){
-            throw new apiError(404,"Comment not found")
+                $project: {
+                    content: 1,
+                    createdAt: 1,
+                    createdAtDiff: 1,
+                    updatedAt: 1,
+                    owner: {
+                        userName: 1,
+                        avatarUrl: 1,
+                    },
+                },
+            },
+        ]);
+        if (comment.length === 0) {
+            throw new apiError(404, "Comment not found");
         }
-        comment[0].editStatus = isEdited(comment[0].createdAt,comment[0].updatedAt)
-        comment[0].relativeTime = formatRelativeTime(comment[0].createdAtDiff)
-        delete comment[0].createdAtDiff
-        delete comment[0].updatedAt
-        res.status(200).json(new apiResponse(200,comment[0],"Comment found successfully"))
+        comment[0].editStatus = isEdited(comment[0].createdAt, comment[0].updatedAt);
+        comment[0].relativeTime = formatRelativeTime(comment[0].createdAtDiff);
+        delete comment[0].createdAtDiff;
+        delete comment[0].updatedAt;
+        res.status(200).json(new apiResponse(200, comment[0], "Comment found successfully"));
     } catch (error) {
-        if (error instanceof apiError) throw error
-        logger.error({ err: error, commentId: req.params.id }, "failed to get comment details")
-        
-        throw new apiError(500,"Something went wrong while getting comment")
+        if (error instanceof apiError) throw error;
+        logger.error({ err: error, commentId: req.params.id }, "failed to get comment details");
+
+        throw new apiError(500, "Something went wrong while getting comment");
     }
-})
+});
 
 // v2: a page of comments where each one carries its like / dislike counts and the viewer's own reaction,
 // computed in the same aggregation (replaces one reaction request per comment on the client)
 const listCommentsWithStats = asyncHandler(async (req, res) => {
-    const type = req.type
-    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id)
-    const key = type === "video" ? "videoId" : "tweetId"
-    if (!await getModel(type).exists({ _id: id })) {
-        throw new apiError(404,`${type === "video" ? "Video" : "Post"} not found`)
+    const type = req.type;
+    const id = mongoose.Types.ObjectId.createFromHexString(req.params.id);
+    const key = type === "video" ? "videoId" : "tweetId";
+    if (!(await getModel(type).exists({ _id: id }))) {
+        throw new apiError(404, `${type === "video" ? "Video" : "Post"} not found`);
     }
-    const cursor = decodeCursor(req.query.cursor)
-    const { limit } = req.query
-    const viewerId = req.user?._id ?? null
+    const cursor = decodeCursor(req.query.cursor);
+    const { limit } = req.query;
+    const viewerId = req.user?._id ?? null;
 
     const comments = await Comment.aggregate([
         { $match: { [key]: id, ...afterCursor(cursor) } },
         { $sort: NEWEST_FIRST },
         { $limit: limit + 1 },
-        { $lookup: { from: "users", localField: "userId", foreignField: "_id", pipeline: [{ $project: { userName: 1, fullName: 1, avatarUrl: 1 } }], as: "author" } },
+        {
+            $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                pipeline: [{ $project: { userName: 1, fullName: 1, avatarUrl: 1 } }],
+                as: "author",
+            },
+        },
         { $unwind: { path: "$author", preserveNullAndEmptyArrays: true } },
         reactionCountsLookup("Comment", "reactionCounts"),
         viewerReactionLookup("Comment", viewerId, "viewerReaction"),
         getCreatedAtDiffField(),
-    ])
+    ]);
 
-    const page = pageOf(comments, limit)
+    const page = pageOf(comments, limit);
     page.items = page.items.map((comment) => ({
         _id: comment._id,
         content: comment.content,
@@ -301,30 +307,39 @@ const listCommentsWithStats = asyncHandler(async (req, res) => {
         likeCount: countFrom(comment.reactionCounts, true),
         dislikeCount: countFrom(comment.reactionCounts, false),
         viewerReaction: reactionOf(comment.viewerReaction),
-    }))
-    return res.status(200).json(new apiResponse(200, page, "Comments fetched successfully"))
-})
+    }));
+    return res.status(200).json(new apiResponse(200, page, "Comments fetched successfully"));
+});
 
 // v2: one delete endpoint for both cases: the comment's author, or the owner of the video / post it is on
 const removeComment = asyncHandler(async (req, res) => {
-    const comment = await Comment.findById(req.params.id)
-    if(!comment){
-        throw new apiError(404,"Comment not found")
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) {
+        throw new apiError(404, "Comment not found");
     }
-    let allowed = comment.userId.equals(req.user._id)
+    let allowed = comment.userId.equals(req.user._id);
     if (!allowed) {
         const target = comment.videoId
             ? await Video.findById(comment.videoId).select("owner")
-            : await Tweet.findById(comment.tweetId).select("owner")
-        allowed = Boolean(target?.owner.equals(req.user._id))
+            : await Tweet.findById(comment.tweetId).select("owner");
+        allowed = Boolean(target?.owner.equals(req.user._id));
     }
     if (!allowed) {
-        throw new apiError(403,"Unauthorized to delete this comment")
+        throw new apiError(403, "Unauthorized to delete this comment");
     }
-    await Comment.deleteOne({ _id: comment._id })
-    await Like.deleteMany({ targetType: "Comment", targetId: comment._id })
-    await removeNotificationsFor({ comment: comment._id })
-    return res.status(200).json(new apiResponse(200,{ _id: comment._id },"Comment deleted successfully"))
-})
+    await Comment.deleteOne({ _id: comment._id });
+    await Like.deleteMany({ targetType: "Comment", targetId: comment._id });
+    await removeNotificationsFor({ comment: comment._id });
+    return res.status(200).json(new apiResponse(200, { _id: comment._id }, "Comment deleted successfully"));
+});
 
-export{createComment, deleteComment, getAllComments, editComment, createrCommentDelete, getCommentDetails, removeComment, listCommentsWithStats}
+export {
+    createComment,
+    deleteComment,
+    getAllComments,
+    editComment,
+    createrCommentDelete,
+    getCommentDetails,
+    removeComment,
+    listCommentsWithStats,
+};

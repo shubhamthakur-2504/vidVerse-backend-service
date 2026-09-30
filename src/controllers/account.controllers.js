@@ -50,7 +50,9 @@ const forgotPassword = asyncHandler(async (req, res) => {
     if (user) {
         await sendPasswordResetEmail(user, await issueUserToken(user._id, "reset-password"));
     }
-    return res.status(202).json(new apiResponse(202, null, "If an account uses that email, we've sent a link to reset the password"));
+    return res
+        .status(202)
+        .json(new apiResponse(202, null, "If an account uses that email, we've sent a link to reset the password"));
 });
 
 // POST /v2/auth/reset-password { token, password }: sets the new password and signs every device out

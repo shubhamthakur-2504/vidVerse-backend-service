@@ -23,13 +23,23 @@ describe("v2: community posts", () => {
         const feed = (await api("get", "/posts").set(authHeader(fan))).body.data;
         expect(feed.items.map((p) => p.content)).toEqual(["fan post", "second post", "first post"]);
         expect(feed.items[2]).toMatchObject({
-            owner: { userName: "poster" }, likeCount: 1, dislikeCount: 0, commentCount: 1,
-            viewerReaction: "like", isOwner: false, canEdit: false, isEdited: false,
+            owner: { userName: "poster" },
+            likeCount: 1,
+            dislikeCount: 0,
+            commentCount: 1,
+            viewerReaction: "like",
+            isOwner: false,
+            canEdit: false,
+            isEdited: false,
         });
         expect(feed.items[0]).toMatchObject({ isOwner: true, canEdit: true, viewerReaction: null });
 
         // anonymous viewers get the same counts and no personal state
-        expect((await api("get", "/posts")).body.data.items[2]).toMatchObject({ likeCount: 1, viewerReaction: null, isOwner: false });
+        expect((await api("get", "/posts")).body.data.items[2]).toMatchObject({
+            likeCount: 1,
+            viewerReaction: null,
+            isOwner: false,
+        });
 
         const channel = await api("get", "/channels/Poster/posts?limit=1").set(authHeader(author));
         expect(channel.status).toBe(200);
@@ -48,7 +58,8 @@ describe("v2: community posts", () => {
         const fan = await createUser();
         const post = (await api("post", "/posts").set(authHeader(author)).field("content", "short-lived")).body.data;
         await api("put", `/reactions/post/${post._id}`).set(authHeader(fan)).send({ value: "like" });
-        const comment = (await api("post", `/posts/${post._id}/comments`).set(authHeader(fan)).send({ content: "hi" })).body.data;
+        const comment = (await api("post", `/posts/${post._id}/comments`).set(authHeader(fan)).send({ content: "hi" }))
+            .body.data;
         await api("put", `/reactions/comment/${comment._id}`).set(authHeader(author)).send({ value: "like" });
 
         expect((await api("delete", `/posts/${post._id}`).set(authHeader(fan))).status).toBe(403);
@@ -62,8 +73,17 @@ describe("v2: community posts", () => {
 
     it("closes the edit window after 15 minutes", async () => {
         const author = await createUser();
-        const old = await Tweet.create({ content: "old", owner: author._id, createdAt: new Date(Date.now() - 20 * 60_000) });
-        expect((await api("get", `/posts/${old._id}`).set(authHeader(author))).body.data).toMatchObject({ isOwner: true, canEdit: false });
-        expect((await api("patch", `/posts/${old._id}`).set(authHeader(author)).send({ content: "late edit" })).status).toBe(400);
+        const old = await Tweet.create({
+            content: "old",
+            owner: author._id,
+            createdAt: new Date(Date.now() - 20 * 60_000),
+        });
+        expect((await api("get", `/posts/${old._id}`).set(authHeader(author))).body.data).toMatchObject({
+            isOwner: true,
+            canEdit: false,
+        });
+        expect(
+            (await api("patch", `/posts/${old._id}`).set(authHeader(author)).send({ content: "late edit" })).status
+        ).toBe(400);
     });
 });

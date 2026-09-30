@@ -21,14 +21,32 @@ const tempEntries = () => fs.readdirSync("public/temps").filter((f) => f !== ".g
 
 describe("video processing job (adaptive HLS)", () => {
     beforeAll(() => {
-        execFileSync(ffmpegPath, ["-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=duration=8:size=1280x720:rate=25", "-f", "lavfi", "-i", "sine=duration=8", "-shortest", "-pix_fmt", "yuv420p", clip]);
+        execFileSync(ffmpegPath, [
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=8:size=1280x720:rate=25",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=duration=8",
+            "-shortest",
+            "-pix_fmt",
+            "yuv420p",
+            clip,
+        ]);
     }, 60000);
     afterAll(() => fs.rmSync(work, { recursive: true, force: true }));
 
     beforeEach(() => {
         vi.clearAllMocks();
         vi.spyOn(agenda, "schedule").mockResolvedValue(undefined);
-        cloudinaryMock.downloadFromCloudinary.mockImplementation(async (url, localPath) => fs.copyFileSync(clip, localPath));
+        cloudinaryMock.downloadFromCloudinary.mockImplementation(async (url, localPath) =>
+            fs.copyFileSync(clip, localPath)
+        );
     });
 
     it("publishes a 360p + 720p ladder, generates the thumbnail, stores the duration and deletes the original", async () => {
@@ -48,12 +66,16 @@ describe("video processing job (adaptive HLS)", () => {
 
         const saved = await Video.findById(video._id);
         expect(saved.status).toBe("ready");
-        expect(saved.videoFileUrl).toBe(`https://res.cloudinary.com/test/raw/upload/v1/videos/${video._id}/master.m3u8`);
+        expect(saved.videoFileUrl).toBe(
+            `https://res.cloudinary.com/test/raw/upload/v1/videos/${video._id}/master.m3u8`
+        );
         expect(saved.thumbnailUrl).toMatch(/thumbnails\/up\d+\.png$/);
         expect(saved.duration).toBeCloseTo(8, 0);
 
         const folders = new Set(cloudinaryMock.uploadFileForHls.mock.calls.map(([, opts]) => opts.folder));
-        expect(folders).toEqual(new Set([`videos/${video._id}`, `videos/${video._id}/360p`, `videos/${video._id}/720p`]));
+        expect(folders).toEqual(
+            new Set([`videos/${video._id}`, `videos/${video._id}/360p`, `videos/${video._id}/720p`])
+        );
         // the direct upload's public id is used as-is (it has more than two path segments)
         expect(cloudinaryMock.deleteFromCloudinary).toHaveBeenCalledWith("uploads/u1/original", "video");
         expect(tempEntries()).toEqual(before);
@@ -79,7 +101,10 @@ describe("video processing job (adaptive HLS)", () => {
         const saved = await Video.findById(video._id);
         expect(saved.status).toBe("processing");
         expect(saved.thumbnailUrl).toMatch(/custom\.jpg$/);
-        expect(agenda.schedule).toHaveBeenCalledWith("in 2 minutes", "process video chunks", { videoId: String(video._id), attempt: 2 });
+        expect(agenda.schedule).toHaveBeenCalledWith("in 2 minutes", "process video chunks", {
+            videoId: String(video._id),
+            attempt: 2,
+        });
         expect(cloudinaryMock.deleteCloudinaryFolder).toHaveBeenCalledWith(`videos/${video._id}`);
         expect(tempEntries()).toEqual(before);
     }, 180000);

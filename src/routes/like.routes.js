@@ -7,11 +7,11 @@ import { validate } from "../middleWares/validate.middleWare.js";
 import { reactSchema, reactionTargetQuerySchema, reactionTargetBodySchema } from "../validators/index.js";
 
 const router = Router();
-router.param("id", validateObjectIdParam)
+router.param("id", validateObjectIdParam);
 
-router.post("/:id", auth, upload.none(),validate(reactSchema), toggleReaction);
+router.post("/:id", auth, upload.none(), validate(reactSchema), toggleReaction);
 router.get("/:id/count", validate(reactionTargetQuerySchema), likeCount);
 router.get("/:id", auth, validate(reactionTargetQuerySchema), getReaction);
-router.delete("/:id", auth, upload.none(),validate(reactionTargetBodySchema), removeReaction);
+router.delete("/:id", auth, upload.none(), validate(reactionTargetBodySchema), removeReaction);
 
 export default router;

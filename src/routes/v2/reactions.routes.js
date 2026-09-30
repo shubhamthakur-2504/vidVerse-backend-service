@@ -11,7 +11,8 @@ import { toggleReaction, getReaction, removeReaction, likeCount } from "../../co
 const router = Router();
 router.param("id", validateObjectIdParam);
 router.param("targetType", (req, res, next, value) =>
-    REACTION_TARGETS[value] ? next() : next(new apiError(400, "targetType must be video, post or comment")));
+    REACTION_TARGETS[value] ? next() : next(new apiError(400, "targetType must be video, post or comment"))
+);
 
 router.get("/:targetType/:id", auth, reactionFromParams, getReaction);
 router.get("/:targetType/:id/count", reactionFromParams, likeCount);

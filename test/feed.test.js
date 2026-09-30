@@ -20,7 +20,10 @@ describe("v2: subscriptions feed", () => {
         await createVideo(alsoFollowed, { status: "processing" });
         await createVideo(stranger);
 
-        expect((await api("get", "/me/subscriptions/videos").set(authHeader(fan))).body.data).toEqual({ items: [], nextCursor: null });
+        expect((await api("get", "/me/subscriptions/videos").set(authHeader(fan))).body.data).toEqual({
+            items: [],
+            nextCursor: null,
+        });
 
         await api("put", `/channels/${followed._id}/subscription`).set(authHeader(fan));
         await api("put", `/channels/${alsoFollowed._id}/subscription`).set(authHeader(fan));
@@ -31,7 +34,9 @@ describe("v2: subscriptions feed", () => {
         expect(first.body.data.items[1].owner).toMatchObject({ userName: alsoFollowed.userName });
         expect(first.body.data.nextCursor).toBeTruthy();
 
-        const second = await api("get", `/me/subscriptions/videos?limit=2&cursor=${first.body.data.nextCursor}`).set(authHeader(fan));
+        const second = await api("get", `/me/subscriptions/videos?limit=2&cursor=${first.body.data.nextCursor}`).set(
+            authHeader(fan)
+        );
         expect(second.body.data).toMatchObject({ items: [{ _id: String(oldest._id) }], nextCursor: null });
 
         expect((await api("get", "/me/subscriptions/videos")).status).toBe(401);

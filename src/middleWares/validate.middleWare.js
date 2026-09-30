@@ -3,7 +3,9 @@ import { apiError } from "../utils/apiError.js";
 
 // multer has already written these by the time validation runs on multipart routes
 const removeUploadedFiles = (req) => {
-    const files = [req.file, ...(Array.isArray(req.files) ? req.files : Object.values(req.files ?? {}).flat())].filter(Boolean);
+    const files = [req.file, ...(Array.isArray(req.files) ? req.files : Object.values(req.files ?? {}).flat())].filter(
+        Boolean
+    );
     for (const file of files) fs.unlink(file.path, () => {});
 };
 
@@ -20,7 +22,9 @@ export const validate = (schemas) => (req, res, next) => {
         if (result.success) {
             req[part] = result.data;
         } else {
-            errors.push(...result.error.issues.map((issue) => ({ field: issue.path.join(".") || part, message: issue.message })));
+            errors.push(
+                ...result.error.issues.map((issue) => ({ field: issue.path.join(".") || part, message: issue.message }))
+            );
         }
     }
     if (errors.length) {

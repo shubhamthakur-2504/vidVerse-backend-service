@@ -23,8 +23,12 @@ describe("config", () => {
     });
 
     it("uses APP_URL for emailed links, falling back to the first client origin", async () => {
-        expect((await loadConfig({ APP_URL: "https://vidverse.example/", CLIENT_URLS: "http://a.test" })).config.appUrl).toBe("https://vidverse.example");
-        const fallback = (await loadConfig({ APP_URL: undefined, CLIENT_URLS: "http://a.test,http://b.test", SMTP_URL: undefined })).config;
+        expect(
+            (await loadConfig({ APP_URL: "https://vidverse.example/", CLIENT_URLS: "http://a.test" })).config.appUrl
+        ).toBe("https://vidverse.example");
+        const fallback = (
+            await loadConfig({ APP_URL: undefined, CLIENT_URLS: "http://a.test,http://b.test", SMTP_URL: undefined })
+        ).config;
         expect(fallback.appUrl).toBe("http://a.test");
         expect(fallback.mail.smtpUrl).toBeNull();
         await expect(loadConfig({ APP_URL: "not a url" })).rejects.toThrow(/APP_URL/);
@@ -49,7 +53,10 @@ describe("config", () => {
     });
 
     it.each([
-        ["mongodb+srv://u:p@cluster.example.net/?retryWrites=true&w=majority", "mongodb+srv://u:p@cluster.example.net/vidVerseDB?retryWrites=true&w=majority"],
+        [
+            "mongodb+srv://u:p@cluster.example.net/?retryWrites=true&w=majority",
+            "mongodb+srv://u:p@cluster.example.net/vidVerseDB?retryWrites=true&w=majority",
+        ],
         ["mongodb+srv://u:p@cluster.example.net", "mongodb+srv://u:p@cluster.example.net/vidVerseDB"],
         ["mongodb://localhost:27017/", "mongodb://localhost:27017/vidVerseDB"],
     ])("builds a database url from %s", async (url, expected) => {

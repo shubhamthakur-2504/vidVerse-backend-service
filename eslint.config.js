@@ -13,7 +13,10 @@ export default [
         },
         rules: {
             // unused catch bindings and _-prefixed args/vars are intentional
-            "no-unused-vars": ["error", { args: "after-used", argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" }],
+            "no-unused-vars": [
+                "error",
+                { args: "after-used", argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
+            ],
             "no-console": "error", // use src/utils/logger.js
             eqeqeq: ["error", "always", { null: "ignore" }],
         },

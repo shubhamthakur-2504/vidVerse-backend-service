@@ -33,7 +33,7 @@ const toggleReaction = asyncHandler(async (req, res) => {
             { userId: req.user._id, targetId, targetType },
             {
                 $setOnInsert: { userId: req.user._id, targetId, targetType },
-                $set: { isLike }
+                $set: { isLike },
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
@@ -43,9 +43,7 @@ const toggleReaction = asyncHandler(async (req, res) => {
             await agenda.schedule("in 10 minutes", "validate like", { likeId: reaction._id });
         }
 
-        return res
-            .status(201)
-            .json(new apiResponse(201, reaction, isLike ? "Liked" : "Disliked"));
+        return res.status(201).json(new apiResponse(201, reaction, isLike ? "Liked" : "Disliked"));
     } catch (error) {
         throw new apiError(500, "Something went wrong while updating reaction");
     }
@@ -62,13 +60,11 @@ const likeCount = asyncHandler(async (req, res) => {
     }
     try {
         const likes = await Like.countDocuments({ targetId, targetType, isLike: true });
-        return res
-            .status(200)
-            .json(new apiResponse(200, { likes }, "Like count fetched"));
+        return res.status(200).json(new apiResponse(200, { likes }, "Like count fetched"));
     } catch (error) {
         throw new apiError(500, "Something went wrong while fetching like count");
     }
-})
+});
 
 const getReaction = asyncHandler(async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
@@ -85,14 +81,11 @@ const getReaction = asyncHandler(async (req, res) => {
         if (isLiked) {
             status = isLiked.isLike ? "like" : "dislike";
         }
-        return res
-            .status(200)
-            .json(new apiResponse(200, { status }, "reaction fetched"));
+        return res.status(200).json(new apiResponse(200, { status }, "reaction fetched"));
     } catch (error) {
         throw new apiError(500, "Something went wrong while fetching reaction status");
     }
-})
-
+});
 
 const removeReaction = asyncHandler(async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
@@ -108,13 +101,10 @@ const removeReaction = asyncHandler(async (req, res) => {
         if (!reaction) {
             throw new apiError(404, "Reaction not found");
         }
-        return res
-            .status(204)
-            .json(new apiResponse(204, reaction, "Reaction removed"));
+        return res.status(204).json(new apiResponse(204, reaction, "Reaction removed"));
     } catch (error) {
         if (error instanceof apiError) throw error;
         throw new apiError(500, "Something went wrong while removing reaction");
     }
-})
+});
 export { toggleReaction, likeCount, getReaction, removeReaction };
-

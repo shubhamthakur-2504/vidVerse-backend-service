@@ -10,7 +10,9 @@ import { NEWEST_FIRST, afterCursor, decodeCursor, pageOf } from "../utils/pagina
 const PUBLIC_VIDEO = { isPublished: true, status: "ready" };
 
 const findChannel = async (userName) => {
-    const channel = await User.findOne({ userName: userName.toLowerCase() }).select("userName fullName avatarUrl coverImageUrl createdAt").lean();
+    const channel = await User.findOne({ userName: userName.toLowerCase() })
+        .select("userName fullName avatarUrl coverImageUrl createdAt")
+        .lean();
     if (!channel) throw new apiError(404, "Channel not found");
     return channel;
 };
@@ -23,13 +25,19 @@ const getChannel = asyncHandler(async (req, res) => {
         Video.countDocuments({ owner: channel._id, ...PUBLIC_VIDEO }),
         req.user ? Subscription.exists({ subscriber: req.user._id, channel: channel._id }) : null,
     ]);
-    return res.status(200).json(new apiResponse(200, {
-        ...channel,
-        subscribersCount,
-        videosCount,
-        isSubscribed: Boolean(subscribed),
-        isOwner: Boolean(req.user?._id.equals(channel._id)),
-    }, "Channel fetched successfully"));
+    return res.status(200).json(
+        new apiResponse(
+            200,
+            {
+                ...channel,
+                subscribersCount,
+                videosCount,
+                isSubscribed: Boolean(subscribed),
+                isOwner: Boolean(req.user?._id.equals(channel._id)),
+            },
+            "Channel fetched successfully"
+        )
+    );
 });
 
 // a channel's public videos, newest first (cursor pagination)
@@ -43,7 +51,15 @@ const getChannelVideos = asyncHandler(async (req, res) => {
         .select("title thumbnailUrl duration views category createdAt")
         .lean();
     const page = pageOf(videos, limit);
-    page.items = page.items.map((video) => ({ ...video, owner: { _id: channel._id, userName: channel.userName, fullName: channel.fullName, avatarUrl: channel.avatarUrl } }));
+    page.items = page.items.map((video) => ({
+        ...video,
+        owner: {
+            _id: channel._id,
+            userName: channel.userName,
+            fullName: channel.fullName,
+            avatarUrl: channel.avatarUrl,
+        },
+    }));
     return res.status(200).json(new apiResponse(200, page, "Channel videos fetched successfully"));
 });
 

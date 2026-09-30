@@ -21,11 +21,17 @@ const uploadPrefixFor = (userId) => `uploads/${userId}/`;
 
 const createUploadIntent = asyncHandler(async (req, res) => {
     const publicId = `${uploadPrefixFor(req.user._id)}${crypto.randomUUID()}`;
-    return res.status(200).json(new apiResponse(200, {
-        ...signVideoUpload(publicId),
-        maxBytes: config.uploads.maxVideoBytes,
-        chunkBytes: CHUNK_BYTES,
-    }, "Upload authorised"));
+    return res.status(200).json(
+        new apiResponse(
+            200,
+            {
+                ...signVideoUpload(publicId),
+                maxBytes: config.uploads.maxVideoBytes,
+                chunkBytes: CHUNK_BYTES,
+            },
+            "Upload authorised"
+        )
+    );
 });
 
 const createVideoFromUpload = asyncHandler(async (req, res) => {

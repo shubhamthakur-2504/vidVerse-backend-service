@@ -23,10 +23,15 @@ const listNotifications = asyncHandler(async (req, res) => {
         lookupOne("videos", "video", "video", { title: 1, thumbnailUrl: 1 }),
         lookupOne("tweets", "post", "post", { content: { $substrCP: ["$content", 0, 120] } }),
         lookupOne("comments", "comment", "comment", { content: { $substrCP: ["$content", 0, 120] } }),
-        firstOrNull("actor"), firstOrNull("video"), firstOrNull("post"), firstOrNull("comment"),
+        firstOrNull("actor"),
+        firstOrNull("video"),
+        firstOrNull("post"),
+        firstOrNull("comment"),
         { $project: { recipient: 0, updatedAt: 0, __v: 0 } },
     ]);
-    return res.status(200).json(new apiResponse(200, pageOf(notifications, limit), "Notifications fetched successfully"));
+    return res
+        .status(200)
+        .json(new apiResponse(200, pageOf(notifications, limit), "Notifications fetched successfully"));
 });
 
 // GET /v2/me/notifications/unread-count (polled by the navbar bell)
@@ -42,7 +47,9 @@ const markNotificationsRead = asyncHandler(async (req, res) => {
         { recipient: req.user._id, readAt: null, ...(ids && { _id: { $in: ids } }) },
         { $set: { readAt: new Date() } }
     );
-    return res.status(200).json(new apiResponse(200, { updated: result.modifiedCount }, "Notifications marked as read"));
+    return res
+        .status(200)
+        .json(new apiResponse(200, { updated: result.modifiedCount }, "Notifications marked as read"));
 });
 
 export { listNotifications, getUnreadCount, markNotificationsRead };

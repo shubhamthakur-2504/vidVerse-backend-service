@@ -18,19 +18,29 @@ describe("video comments", () => {
         const author = await createUser({ userName: "commenter" });
         const video = await createVideo(await createUser());
 
-        const created = await request(app).post(`/api/v1/videos/createcomment/${video._id}`).set(authHeader(author)).send({ content: "great video" });
+        const created = await request(app)
+            .post(`/api/v1/videos/createcomment/${video._id}`)
+            .set(authHeader(author))
+            .send({ content: "great video" });
         expect(created.status).toBe(200);
 
         const res = await request(app).get(`/api/v1/videos/getallcomments/${video._id}`);
         expect(res.status).toBe(200);
         expect(res.body.data.items).toHaveLength(1);
-        expect(res.body.data.items[0]).toMatchObject({ content: "great video", userDetails: { userName: "commenter" }, editStatus: false });
+        expect(res.body.data.items[0]).toMatchObject({
+            content: "great video",
+            userDetails: { userName: "commenter" },
+            editStatus: false,
+        });
         expect(res.body.data.items[0].relativeTime).toBe("Today");
     });
 
     it("rejects an empty comment with 400", async () => {
         const video = await createVideo(await createUser());
-        const res = await request(app).post(`/api/v1/videos/createcomment/${video._id}`).set(authHeader(await createUser())).send({ content: "   " });
+        const res = await request(app)
+            .post(`/api/v1/videos/createcomment/${video._id}`)
+            .set(authHeader(await createUser()))
+            .send({ content: "   " });
         expect(res.status).toBe(400);
     });
 

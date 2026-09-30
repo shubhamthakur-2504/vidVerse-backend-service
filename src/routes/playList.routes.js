@@ -1,5 +1,13 @@
 import { Router } from "express";
-import { createPlayList,addVideoToPlayList,removeVideoFromPlayList,updatePlayList,getPlayList,getAllPlayList,deletePlayList } from "../controllers/playList.controllers.js";
+import {
+    createPlayList,
+    addVideoToPlayList,
+    removeVideoFromPlayList,
+    updatePlayList,
+    getPlayList,
+    getAllPlayList,
+    deletePlayList,
+} from "../controllers/playList.controllers.js";
 import { verifyJwtToken as auth } from "../middleWares/auth.middleWare.js";
 import { upload } from "../middleWares/multer.middleWare.js";
 import { determineOrigin } from "../middleWares/type.middleWare.js";
@@ -7,18 +15,26 @@ import { validateObjectIdParam } from "../middleWares/validateId.middleWare.js";
 import { validate } from "../middleWares/validate.middleWare.js";
 import { createPlaylistSchema, playlistVideoSchema, updatePlaylistSchema } from "../validators/index.js";
 
-const router = Router() //need testing
-router.param("id", validateObjectIdParam)
+const router = Router(); //need testing
+router.param("id", validateObjectIdParam);
 
-router.route("/create/:id").post(auth,determineOrigin,upload.single("thumbnail"),validate(createPlaylistSchema), createPlayList)
-router.route("/addvideotoplaylist").post(auth,determineOrigin,upload.none(),validate(playlistVideoSchema), addVideoToPlayList)
-router.route("/removevideofromplaylist").post(auth,determineOrigin,upload.none(),validate(playlistVideoSchema), removeVideoFromPlayList)
+router
+    .route("/create/:id")
+    .post(auth, determineOrigin, upload.single("thumbnail"), validate(createPlaylistSchema), createPlayList);
+router
+    .route("/addvideotoplaylist")
+    .post(auth, determineOrigin, upload.none(), validate(playlistVideoSchema), addVideoToPlayList);
+router
+    .route("/removevideofromplaylist")
+    .post(auth, determineOrigin, upload.none(), validate(playlistVideoSchema), removeVideoFromPlayList);
 
-router.route("/updateplaylist/:id").patch(auth,determineOrigin,upload.single("thumbnail"),validate(updatePlaylistSchema), updatePlayList)
+router
+    .route("/updateplaylist/:id")
+    .patch(auth, determineOrigin, upload.single("thumbnail"), validate(updatePlaylistSchema), updatePlayList);
 
-router.route("/getplaylist/:id").get(auth,determineOrigin,getPlayList)
-router.route("/getallplaylist").get(auth,determineOrigin,getAllPlayList)
+router.route("/getplaylist/:id").get(auth, determineOrigin, getPlayList);
+router.route("/getallplaylist").get(auth, determineOrigin, getAllPlayList);
 
-router.route("/deleteplaylist/:id").delete(auth,determineOrigin,deletePlayList) //need little refinment
+router.route("/deleteplaylist/:id").delete(auth, determineOrigin, deletePlayList); //need little refinment
 
-export default router
+export default router;

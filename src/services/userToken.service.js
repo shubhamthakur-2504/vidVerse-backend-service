@@ -9,7 +9,12 @@ const LIFETIME_MS = { "verify-email": 24 * 60 * 60 * 1000, "reset-password": 60 
 export const issueUserToken = async (userId, purpose) => {
     const token = crypto.randomBytes(32).toString("base64url");
     await UserToken.deleteMany({ userId, purpose, usedAt: null });
-    await UserToken.create({ userId, purpose, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + LIFETIME_MS[purpose]) });
+    await UserToken.create({
+        userId,
+        purpose,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + LIFETIME_MS[purpose]),
+    });
     return token;
 };
 

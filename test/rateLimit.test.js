@@ -8,13 +8,17 @@ const appWith = (limiter) => {
     const app = express();
     app.set("trust proxy", 1); // lets each test pick a client ip via X-Forwarded-For
     app.post("/login", limiter, (req, res) => res.json({ ok: true }));
-    app.use((err, req, res, _next) => res.status(err.statusCode ?? 500).json({ statusCode: err.statusCode, message: err.message }));
+    app.use((err, req, res, _next) =>
+        res.status(err.statusCode ?? 500).json({ statusCode: err.statusCode, message: err.message })
+    );
     return app;
 };
 
 describe("rate limiting (S5)", () => {
     it("rejects requests over the limit with 429 and the API error shape", async () => {
-        const app = appWith(createRateLimiter({ windowMs: 60_000, limit: 2, message: "Too many attempts", enabled: true }));
+        const app = appWith(
+            createRateLimiter({ windowMs: 60_000, limit: 2, message: "Too many attempts", enabled: true })
+        );
         const as = (ip) => request(app).post("/login").set("X-Forwarded-For", ip);
 
         expect((await as("1.1.1.1")).status).toBe(200);

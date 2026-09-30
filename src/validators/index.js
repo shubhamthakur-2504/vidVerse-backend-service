@@ -1,5 +1,16 @@
 import { z } from "zod";
-import { objectId, text, optionalText, optionalLongText, category, booleanLike, reactionTarget, userName, newPassword, pageQuery } from "./common.js";
+import {
+    objectId,
+    text,
+    optionalText,
+    optionalLongText,
+    category,
+    booleanLike,
+    reactionTarget,
+    userName,
+    newPassword,
+    pageQuery,
+} from "./common.js";
 
 // ---- users ----
 export const registerSchema = {
@@ -20,12 +31,18 @@ export const loginSchema = {
             // existing accounts may have short passwords: only require one here
             password: z.string({ error: "Password is required" }).min(1, "Password is required").max(128),
         })
-        .refine((body) => body.identifier || body.email || body.userName, { message: "Username or email is required", path: ["identifier"] }),
+        .refine((body) => body.identifier || body.email || body.userName, {
+            message: "Username or email is required",
+            path: ["identifier"],
+        }),
 };
 
 export const changePasswordSchema = {
     body: z.object({
-        currentPassword: z.string({ error: "Current password is required" }).min(1, "Current password is required").max(128),
+        currentPassword: z
+            .string({ error: "Current password is required" })
+            .min(1, "Current password is required")
+            .max(128),
         newPassword,
     }),
 };
@@ -36,7 +53,10 @@ export const updateAccountSchema = {
             userName: userName.optional(),
             fullName: optionalText("Full name", { max: 80 }),
         })
-        .refine((body) => body.userName || body.fullName, { message: "A new username or full name is required", path: ["userName"] }),
+        .refine((body) => body.userName || body.fullName, {
+            message: "A new username or full name is required",
+            path: ["userName"],
+        }),
 };
 
 // ---- videos ----

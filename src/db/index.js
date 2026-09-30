@@ -12,10 +12,12 @@ export const connectDB = async () => {
         const connection = await mongoose.connect(mongoUrl, {
             serverSelectionTimeoutMS: 30000,
         });
-        logger.info({ host: connection.connection.host, db: connection.connection.db.databaseName }, "mongodb connected")
-
+        logger.info(
+            { host: connection.connection.host, db: connection.connection.db.databaseName },
+            "mongodb connected"
+        );
     } catch (error) {
-        logger.fatal({ err: error }, "mongodb connection failed")
+        logger.fatal({ err: error }, "mongodb connection failed");
         process.exit(1);
     }
-}
+};

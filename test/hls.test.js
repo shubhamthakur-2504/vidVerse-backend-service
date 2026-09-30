@@ -4,12 +4,28 @@ import os from "os";
 import path from "path";
 import { execFileSync } from "child_process";
 import ffmpegPath from "ffmpeg-static";
-import { pickRenditions, probeVideo, transcodeToHls, rewritePlaylist, publishHls, extractFrame, mapLimit } from "../src/services/hls.service.js";
+import {
+    pickRenditions,
+    probeVideo,
+    transcodeToHls,
+    rewritePlaylist,
+    publishHls,
+    extractFrame,
+    mapLimit,
+} from "../src/services/hls.service.js";
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "vv-hls-"));
 const makeClip = (name, { width, height, seconds, audio }) => {
     const file = path.join(work, name);
-    const args = ["-loglevel", "error", "-y", "-f", "lavfi", "-i", `testsrc=duration=${seconds}:size=${width}x${height}:rate=25`];
+    const args = [
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        `testsrc=duration=${seconds}:size=${width}x${height}:rate=25`,
+    ];
     if (audio) args.push("-f", "lavfi", "-i", `sine=duration=${seconds}`, "-shortest");
     execFileSync(ffmpegPath, [...args, "-pix_fmt", "yuv420p", file]);
     return file;
@@ -31,7 +47,10 @@ describe("playlist rewriting", () => {
     it("replaces uri lines and keeps tags", () => {
         const text = "#EXTM3U\n#EXTINF:6.0,\nseg_000.ts\n#EXTINF:2.0,\nseg_001.ts\n#EXT-X-ENDLIST\n";
         const out = rewritePlaylist(text, (uri) => `https://cdn/${uri}`);
-        expect(out.split("\n").filter((l) => l && !l.startsWith("#"))).toEqual(["https://cdn/seg_000.ts", "https://cdn/seg_001.ts"]);
+        expect(out.split("\n").filter((l) => l && !l.startsWith("#"))).toEqual([
+            "https://cdn/seg_000.ts",
+            "https://cdn/seg_001.ts",
+        ]);
         expect(out).toContain("#EXT-X-ENDLIST");
     });
 
@@ -40,7 +59,8 @@ describe("playlist rewriting", () => {
     });
 
     it("mapLimit keeps order and never exceeds the limit", async () => {
-        let inFlight = 0, peak = 0;
+        let inFlight = 0,
+            peak = 0;
         const out = await mapLimit([1, 2, 3, 4, 5, 6], 2, async (n) => {
             peak = Math.max(peak, ++inFlight);
             await new Promise((r) => setTimeout(r, 5));
@@ -80,7 +100,9 @@ describe("adaptive HLS with real ffmpeg", () => {
         // 14s at 6s segments = 3 segments in each rendition, cut at the same points
         const counts = ladder.renditions.map((r) => r.segmentPaths.length);
         expect(counts).toEqual([3, 3]);
-        const durations = ladder.renditions.map((r) => fs.readFileSync(r.playlistPath, "utf8").match(/#EXTINF:([\d.]+)/g));
+        const durations = ladder.renditions.map((r) =>
+            fs.readFileSync(r.playlistPath, "utf8").match(/#EXTINF:([\d.]+)/g)
+        );
         expect(durations[0]).toEqual(durations[1]);
     }, 120000);
 
@@ -113,7 +135,9 @@ describe("adaptive HLS with real ffmpeg", () => {
         expect(segments).toHaveLength(6);
         expect(new Set(segments.map((s) => s.folder))).toEqual(new Set(["videos/abc/360p", "videos/abc/720p"]));
         expect(uploads.filter((u) => u.resourceType === "raw").map((u) => `${u.folder}/${u.name}`)).toEqual([
-            "videos/abc/360p/index.m3u8", "videos/abc/720p/index.m3u8", "videos/abc/master.m3u8",
+            "videos/abc/360p/index.m3u8",
+            "videos/abc/720p/index.m3u8",
+            "videos/abc/master.m3u8",
         ]);
 
         const master = fs.readFileSync(ladder.masterPath, "utf8");

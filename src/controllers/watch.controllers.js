@@ -39,13 +39,43 @@ const getWatchPayload = asyncHandler(async (req, res) => {
 
     const [video] = await Video.aggregate([
         // owners can also open their own unpublished (but processed) videos
-        { $match: { _id: videoId, status: "ready", $or: [{ isPublished: true }, ...(viewerId ? [{ owner: viewerId }] : [])] } },
-        { $lookup: { from: "users", localField: "owner", foreignField: "_id", pipeline: [{ $project: OWNER_FIELDS }], as: "owner" } },
+        {
+            $match: {
+                _id: videoId,
+                status: "ready",
+                $or: [{ isPublished: true }, ...(viewerId ? [{ owner: viewerId }] : [])],
+            },
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                pipeline: [{ $project: OWNER_FIELDS }],
+                as: "owner",
+            },
+        },
         { $unwind: "$owner" },
         reactionCountsLookup("Video", "reactionCounts"),
         viewerReactionLookup("Video", viewerId, "viewerReaction"),
-        { $lookup: { from: "comments", localField: "_id", foreignField: "videoId", pipeline: [{ $count: "n" }], as: "commentCount" } },
-        { $lookup: { from: "subscribes", localField: "owner._id", foreignField: "channel", pipeline: [{ $count: "n" }], as: "subscriberCount" } },
+        {
+            $lookup: {
+                from: "comments",
+                localField: "_id",
+                foreignField: "videoId",
+                pipeline: [{ $count: "n" }],
+                as: "commentCount",
+            },
+        },
+        {
+            $lookup: {
+                from: "subscribes",
+                localField: "owner._id",
+                foreignField: "channel",
+                pipeline: [{ $count: "n" }],
+                as: "subscriberCount",
+            },
+        },
         {
             $lookup: {
                 from: "subscribes",
@@ -99,16 +129,32 @@ const getRelatedVideos = asyncHandler(async (req, res) => {
         { $match: match },
         { $sort: sort },
         { $limit: size },
-        { $lookup: { from: "users", localField: "owner", foreignField: "_id", pipeline: [{ $project: OWNER_FIELDS }], as: "owner" } },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                pipeline: [{ $project: OWNER_FIELDS }],
+                as: "owner",
+            },
+        },
         { $unwind: "$owner" },
         { $project: { title: 1, thumbnailUrl: 1, duration: 1, views: 1, category: 1, createdAt: 1, owner: 1 } },
     ];
 
-    const related = await Video.aggregate(listStages({ ...publicVideo, $or: [{ category: current.category }, { owner: current.owner }] }, { views: -1, createdAt: -1 }, limit));
+    const related = await Video.aggregate(
+        listStages(
+            { ...publicVideo, $or: [{ category: current.category }, { owner: current.owner }] },
+            { views: -1, createdAt: -1 },
+            limit
+        )
+    );
     let items = related;
     if (items.length < limit) {
         const seen = [videoId, ...items.map((v) => v._id)];
-        const filler = await Video.aggregate(listStages({ ...publicVideo, _id: { $nin: seen } }, { createdAt: -1, _id: -1 }, limit - items.length));
+        const filler = await Video.aggregate(
+            listStages({ ...publicVideo, _id: { $nin: seen } }, { createdAt: -1, _id: -1 }, limit - items.length)
+        );
         items = [...items, ...filler];
     }
     return res.status(200).json(new apiResponse(200, items, "Related videos fetched successfully"));

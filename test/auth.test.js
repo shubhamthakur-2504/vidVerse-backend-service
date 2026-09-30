@@ -17,7 +17,10 @@ describe("auth flow", () => {
     it("registers a user without leaking the password (H13 response shape)", async () => {
         const res = await request(app)
             .post("/api/v1/user/register")
-            .field("userName", "Alice").field("email", "alice@example.com").field("fullName", "Alice A").field("password", "password123")
+            .field("userName", "Alice")
+            .field("email", "alice@example.com")
+            .field("fullName", "Alice A")
+            .field("password", "password123")
             .attach("avatar", png, { filename: "a.png", contentType: "image/png" })
             .attach("cover", png, { filename: "c.png", contentType: "image/png" });
         expect(res.status).toBe(201);
@@ -30,15 +33,23 @@ describe("auth flow", () => {
         await createUser({ userName: "bob", email: "bob@example.com" });
         const res = await request(app)
             .post("/api/v1/user/register")
-            .field("userName", "bob").field("email", "other@example.com").field("fullName", "Bob").field("password", "password123")
+            .field("userName", "bob")
+            .field("email", "other@example.com")
+            .field("fullName", "Bob")
+            .field("password", "password123")
             .attach("avatar", png, { filename: "a.png", contentType: "image/png" })
             .attach("cover", png, { filename: "c.png", contentType: "image/png" });
         expect(res.status).toBe(409);
     });
 
     it("registers without a cover image, but not without an avatar (M4)", async () => {
-        const base = () => request(app).post("/api/v2/auth/register")
-            .field("userName", "nocover").field("email", "nocover@example.com").field("fullName", "No Cover").field("password", "password123");
+        const base = () =>
+            request(app)
+                .post("/api/v2/auth/register")
+                .field("userName", "nocover")
+                .field("email", "nocover@example.com")
+                .field("fullName", "No Cover")
+                .field("password", "password123");
 
         expect((await base()).status).toBe(400);
         expect(await User.exists({ userName: "nocover" })).toBeNull();
@@ -60,8 +71,12 @@ describe("auth flow", () => {
     });
 
     it("rejects an invalid email with 400, not 410 (M4)", async () => {
-        const res = await request(app).post("/api/v2/auth/register")
-            .field("userName", "bademail").field("email", "not-an-email").field("fullName", "Bad").field("password", "password123")
+        const res = await request(app)
+            .post("/api/v2/auth/register")
+            .field("userName", "bademail")
+            .field("email", "not-an-email")
+            .field("fullName", "Bad")
+            .field("password", "password123")
             .attach("avatar", png, { filename: "a.png", contentType: "image/png" });
         expect(res.status).toBe(400);
     });
@@ -71,14 +86,21 @@ describe("auth flow", () => {
         cloudinaryMock.uploadOnCloudinary
             .mockImplementationOnce(async (localPath) => {
                 await fs.unlink(localPath).catch(() => {});
-                return { url: "https://res.cloudinary.com/test/image/upload/v1/avatars/ok.png", public_id: "avatars/ok" };
+                return {
+                    url: "https://res.cloudinary.com/test/image/upload/v1/avatars/ok.png",
+                    public_id: "avatars/ok",
+                };
             })
             .mockImplementationOnce(async (localPath) => {
                 await fs.unlink(localPath).catch(() => {});
                 return null;
             });
-        const res = await request(app).post("/api/v2/auth/register")
-            .field("userName", "flaky").field("email", "flaky@example.com").field("fullName", "Flaky").field("password", "password123")
+        const res = await request(app)
+            .post("/api/v2/auth/register")
+            .field("userName", "flaky")
+            .field("email", "flaky@example.com")
+            .field("fullName", "Flaky")
+            .field("password", "password123")
             .attach("avatar", png, { filename: "a.png", contentType: "image/png" })
             .attach("cover", png, { filename: "c.png", contentType: "image/png" });
         expect(res.status).toBe(502);
@@ -94,7 +116,9 @@ describe("auth flow", () => {
         ["legacy email field", { email: "carol@example.com" }],
     ])("logs in with %s and sets both auth cookies (H1)", async (_label, body) => {
         await createUser({ userName: "carol", email: "carol@example.com" });
-        const res = await request(app).post("/api/v1/user/login").send({ ...body, password: "password123" });
+        const res = await request(app)
+            .post("/api/v1/user/login")
+            .send({ ...body, password: "password123" });
         expect(res.status).toBe(200);
         expect(cookieValue(res, "accessToken")).toMatch(/^accessToken=ey/);
         expect(cookieValue(res, "refreshToken")).toMatch(/^refreshToken=ey/);
@@ -108,7 +132,9 @@ describe("auth flow", () => {
 
     it("refreshes the access token and revokes the session on logout (C4, H3)", async () => {
         await createUser({ userName: "erin" });
-        const login = await request(app).post("/api/v1/user/login").send({ identifier: "erin", password: "password123" });
+        const login = await request(app)
+            .post("/api/v1/user/login")
+            .send({ identifier: "erin", password: "password123" });
         const refreshCookie = cookieValue(login, "refreshToken");
         const accessCookie = cookieValue(login, "accessToken");
 
@@ -138,7 +164,9 @@ describe("auth flow", () => {
     it("saves a new avatar url before deleting the old image (C3)", async () => {
         const user = await createUser();
         const oldUrl = user.avatarUrl;
-        const login = await request(app).post("/api/v1/user/login").send({ identifier: user.userName, password: "password123" });
+        const login = await request(app)
+            .post("/api/v1/user/login")
+            .send({ identifier: user.userName, password: "password123" });
         const res = await request(app)
             .patch("/api/v1/user/changeavatar")
             .set("Cookie", cookieValue(login, "accessToken"))

@@ -16,7 +16,10 @@ describe("request validation", () => {
         const before = tempFiles();
         const res = await request(app)
             .post("/api/v1/user/register")
-            .field("userName", "no spaces allowed").field("email", "not-an-email").field("fullName", "  ").field("password", "short")
+            .field("userName", "no spaces allowed")
+            .field("email", "not-an-email")
+            .field("fullName", "  ")
+            .field("password", "short")
             .attach("avatar", png, { filename: "a.png", contentType: "image/png" })
             .attach("cover", png, { filename: "c.png", contentType: "image/png" });
 
@@ -37,7 +40,8 @@ describe("request validation", () => {
         const res = await request(app)
             .post("/api/v1/videos/upload")
             .set(authHeader(await createUser()))
-            .field("title", "My video").field("category", "Cooking")
+            .field("title", "My video")
+            .field("category", "Cooking")
             .attach("video", Buffer.from("x"), { filename: "v.mp4", contentType: "video/mp4" });
         expect(res.status).toBe(400);
         expect(res.body.errors).toEqual([{ field: "category", message: "Invalid category" }]);
@@ -47,11 +51,18 @@ describe("request validation", () => {
         const user = await createUser();
         const video = await createVideo(user);
 
-        const dislike = await request(app).post(`/api/v1/reaction/${video._id}`).set(authHeader(user)).field("targetType", "Video").field("isLike", "false");
+        const dislike = await request(app)
+            .post(`/api/v1/reaction/${video._id}`)
+            .set(authHeader(user))
+            .field("targetType", "Video")
+            .field("isLike", "false");
         expect(dislike.status).toBe(201);
         expect((await Like.findOne({ targetId: video._id })).isLike).toBe(false);
 
-        const bad = await request(app).post(`/api/v1/reaction/${video._id}`).set(authHeader(user)).send({ targetType: "Video", isLike: "maybe" });
+        const bad = await request(app)
+            .post(`/api/v1/reaction/${video._id}`)
+            .set(authHeader(user))
+            .send({ targetType: "Video", isLike: "maybe" });
         expect(bad.status).toBe(400);
         expect(bad.body.errors[0].field).toBe("isLike");
     });
@@ -64,7 +75,10 @@ describe("request validation", () => {
 
     it("rejects an over-long comment", async () => {
         const video = await createVideo(await createUser());
-        const res = await request(app).post(`/api/v1/videos/createcomment/${video._id}`).set(authHeader(await createUser())).send({ content: "x".repeat(2001) });
+        const res = await request(app)
+            .post(`/api/v1/videos/createcomment/${video._id}`)
+            .set(authHeader(await createUser()))
+            .send({ content: "x".repeat(2001) });
         expect(res.status).toBe(400);
         expect(res.body.errors[0]).toEqual({ field: "content", message: "Comment must be at most 2000 characters" });
     });

@@ -7,9 +7,21 @@ import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.j
 import { withType } from "../../middleWares/type.middleWare.js";
 import { createView as view } from "../../middleWares/view.middleWare.js";
 import { uploadVideoSchema, commentSchema, listCommentsSchema } from "../../validators/index.js";
-import { updateVideoV2Schema, relatedVideosSchema, createFromUploadSchema, listVideosV2Schema } from "../../validators/v2.js";
+import {
+    updateVideoV2Schema,
+    relatedVideosSchema,
+    createFromUploadSchema,
+    listVideosV2Schema,
+} from "../../validators/v2.js";
 import { createUploadIntent, createVideoFromUpload } from "../../controllers/directUpload.controllers.js";
-import { getAllVideos, getCategories, uploadVideo, updateVideoDetails, deleteVideo, recordView } from "../../controllers/video.controllers.js";
+import {
+    getAllVideos,
+    getCategories,
+    uploadVideo,
+    updateVideoDetails,
+    deleteVideo,
+    recordView,
+} from "../../controllers/video.controllers.js";
 import { listCommentsWithStats, createComment } from "../../controllers/comment.controllers.js";
 import { getWatchPayload, getRelatedVideos } from "../../controllers/watch.controllers.js";
 import { reprocessVideo } from "../../controllers/studio.controllers.js";
@@ -25,7 +37,17 @@ router.get("/categories", getCategories);
 router.post("/upload-intent", auth, uploadLimiter, createUploadIntent);
 router.post("/from-upload", auth, upload.single("thumbnail"), validate(createFromUploadSchema), createVideoFromUpload);
 // upload through this server (multipart), kept for small files and older clients
-router.post("/", auth, uploadLimiter, videoUpload.fields([{ name: "video", maxCount: 1 }, { name: "thumbnail", maxCount: 1 }]), validate(uploadVideoSchema), uploadVideo);
+router.post(
+    "/",
+    auth,
+    uploadLimiter,
+    videoUpload.fields([
+        { name: "video", maxCount: 1 },
+        { name: "thumbnail", maxCount: 1 },
+    ]),
+    validate(uploadVideoSchema),
+    uploadVideo
+);
 
 router.get("/:videoId", lightauth, getWatchPayload);
 router.get("/:videoId/related", validate(relatedVideosSchema), getRelatedVideos);
@@ -36,7 +58,10 @@ router.post("/:videoId/reprocess", auth, reprocessVideo);
 router.post("/:videoId/views", lightauth, view, recordView);
 
 // comments reuse controllers that read req.params.id
-const toId = (req, res, next) => { req.params.id = req.params.videoId; next(); };
+const toId = (req, res, next) => {
+    req.params.id = req.params.videoId;
+    next();
+};
 router.get("/:videoId/comments", lightauth, toId, validate(listCommentsSchema), listCommentsWithStats);
 router.post("/:videoId/comments", auth, toId, validate(commentSchema), createComment);
 

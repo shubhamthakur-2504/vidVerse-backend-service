@@ -46,9 +46,17 @@ const runFfmpeg = (args) =>
     new Promise((resolve, reject) => {
         const child = spawn(ffmpegPath, ["-hide_banner", "-loglevel", "error", "-y", ...args], { windowsHide: true });
         let stderr = "";
-        child.stderr.on("data", (chunk) => { stderr = (stderr + chunk).slice(-4000); });
+        child.stderr.on("data", (chunk) => {
+            stderr = (stderr + chunk).slice(-4000);
+        });
         child.on("error", reject);
-        child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited with code ${code}: ${stderr.trim().split("\n").slice(-3).join(" | ")}`))));
+        child.on("close", (code) =>
+            code === 0
+                ? resolve()
+                : reject(
+                      new Error(`ffmpeg exited with code ${code}: ${stderr.trim().split("\n").slice(-3).join(" | ")}`)
+                  )
+        );
     });
 
 // the ffmpeg arguments for one pass that splits the video, scales each copy and encodes every rendition
@@ -60,24 +68,47 @@ export const hlsArgs = (inputPath, outputDir, renditions, hasAudio) => {
     const args = ["-i", inputPath, "-filter_complex", [split, ...scales].join(";")];
 
     renditions.forEach((r, i) => {
-        args.push("-map", `[v${i}out]`, `-c:v:${i}`, "libx264", `-b:v:${i}`, r.videoBitrate, `-maxrate:v:${i}`, r.maxrate, `-bufsize:v:${i}`, r.bufsize);
+        args.push(
+            "-map",
+            `[v${i}out]`,
+            `-c:v:${i}`,
+            "libx264",
+            `-b:v:${i}`,
+            r.videoBitrate,
+            `-maxrate:v:${i}`,
+            r.maxrate,
+            `-bufsize:v:${i}`,
+            r.bufsize
+        );
         if (hasAudio) args.push("-map", "a:0", `-c:a:${i}`, "aac", `-b:a:${i}`, r.audioBitrate, `-ac:a:${i}`, "2");
     });
 
     args.push(
-        "-preset", "veryfast",
-        "-profile:v", "main",
-        "-pix_fmt", "yuv420p",
+        "-preset",
+        "veryfast",
+        "-profile:v",
+        "main",
+        "-pix_fmt",
+        "yuv420p",
         // identical keyframe positions in every rendition so the player can switch between them per segment
-        "-force_key_frames", `expr:gte(t,n_forced*${SEGMENT_SECONDS})`,
-        "-sc_threshold", "0",
-        "-f", "hls",
-        "-hls_time", String(SEGMENT_SECONDS),
-        "-hls_playlist_type", "vod",
-        "-hls_list_size", "0",
-        "-hls_segment_filename", `${out}/%v/seg_%03d.ts`,
-        "-master_pl_name", "master.m3u8",
-        "-var_stream_map", renditions.map((r, i) => (hasAudio ? `v:${i},a:${i},name:${r.name}` : `v:${i},name:${r.name}`)).join(" "),
+        "-force_key_frames",
+        `expr:gte(t,n_forced*${SEGMENT_SECONDS})`,
+        "-sc_threshold",
+        "0",
+        "-f",
+        "hls",
+        "-hls_time",
+        String(SEGMENT_SECONDS),
+        "-hls_playlist_type",
+        "vod",
+        "-hls_list_size",
+        "0",
+        "-hls_segment_filename",
+        `${out}/%v/seg_%03d.ts`,
+        "-master_pl_name",
+        "master.m3u8",
+        "-var_stream_map",
+        renditions.map((r, i) => (hasAudio ? `v:${i},a:${i},name:${r.name}` : `v:${i},name:${r.name}`)).join(" "),
         `${out}/%v/index.m3u8`
     );
     return args;
@@ -94,7 +125,11 @@ export const transcodeToHls = async (inputPath, outputDir, renditions, hasAudio)
             return {
                 ...r,
                 playlistPath: path.join(dir, "index.m3u8"),
-                segmentPaths: fs.readdirSync(dir).filter((f) => f.endsWith(".ts")).sort().map((f) => path.join(dir, f)),
+                segmentPaths: fs
+                    .readdirSync(dir)
+                    .filter((f) => f.endsWith(".ts"))
+                    .sort()
+                    .map((f) => path.join(dir, f)),
             };
         }),
     };
@@ -104,9 +139,17 @@ export const transcodeToHls = async (inputPath, outputDir, renditions, hasAudio)
 export const extractFrame = (inputPath, outputPath, atSeconds) =>
     new Promise((resolve, reject) => {
         Ffmpeg(inputPath)
-            .on("end", () => (fs.existsSync(outputPath) ? resolve(outputPath) : reject(new Error(`no frame at ${atSeconds}s`))))
+            .on("end", () =>
+                fs.existsSync(outputPath) ? resolve(outputPath) : reject(new Error(`no frame at ${atSeconds}s`))
+            )
             .on("error", reject)
-            .screenshots({ count: 1, timemarks: [String(atSeconds)], folder: path.dirname(outputPath), filename: path.basename(outputPath), size: "1280x?" });
+            .screenshots({
+                count: 1,
+                timemarks: [String(atSeconds)],
+                folder: path.dirname(outputPath),
+                filename: path.basename(outputPath),
+                size: "1280x?",
+            });
     });
 
 // replace every uri line of a playlist; resolve(uri) must return the new url (throws for unknown uris)
@@ -143,11 +186,20 @@ export const publishHls = async (ladder, folder, uploadFile, { concurrency = 4 }
         const renditionFolder = `${folder}/${rendition.name}`;
         const segmentUrls = {};
         await mapLimit(rendition.segmentPaths, concurrency, async (segmentPath) => {
-            segmentUrls[path.basename(segmentPath)] = await uploadFile(segmentPath, { resourceType: "video", folder: renditionFolder });
+            segmentUrls[path.basename(segmentPath)] = await uploadFile(segmentPath, {
+                resourceType: "video",
+                folder: renditionFolder,
+            });
         });
-        const playlist = rewritePlaylist(await fs.promises.readFile(rendition.playlistPath, "utf8"), (uri) => segmentUrls[uri]);
+        const playlist = rewritePlaylist(
+            await fs.promises.readFile(rendition.playlistPath, "utf8"),
+            (uri) => segmentUrls[uri]
+        );
         await fs.promises.writeFile(rendition.playlistPath, playlist);
-        playlistUrls[`${rendition.name}/index.m3u8`] = await uploadFile(rendition.playlistPath, { resourceType: "raw", folder: renditionFolder });
+        playlistUrls[`${rendition.name}/index.m3u8`] = await uploadFile(rendition.playlistPath, {
+            resourceType: "raw",
+            folder: renditionFolder,
+        });
     }
     const master = rewritePlaylist(await fs.promises.readFile(ladder.masterPath, "utf8"), (uri) => playlistUrls[uri]);
     await fs.promises.writeFile(ladder.masterPath, master);

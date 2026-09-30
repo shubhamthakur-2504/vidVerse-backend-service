@@ -26,7 +26,13 @@ const walk = async (query) => {
 describe("v2: search filters on GET /videos", () => {
     it("sorts by views and pages without gaps, breaking ties by _id", async () => {
         const owner = await createUser();
-        for (const [title, views] of [["low", 1], ["top", 90], ["tieA", 50], ["tieB", 50], ["mid", 20]]) {
+        for (const [title, views] of [
+            ["low", 1],
+            ["top", 90],
+            ["tieA", 50],
+            ["tieB", 50],
+            ["mid", 20],
+        ]) {
             await createVideo(owner, { title: `sorted ${title}`, views });
         }
         await createVideo(owner, { title: "other topic", views: 1000 });
@@ -55,7 +61,12 @@ describe("v2: search filters on GET /videos", () => {
 
     it("filters by duration: under 4 minutes, 4 to 20, over 20", async () => {
         const owner = await createUser();
-        for (const [title, duration] of [["clip", 239], ["four", 240], ["twenty", 1200], ["film", 1201]]) {
+        for (const [title, duration] of [
+            ["clip", 239],
+            ["four", 240],
+            ["twenty", 1200],
+            ["film", 1201],
+        ]) {
             await createVideo(owner, { title, duration });
         }
         const sorted = async (duration) => titles(await api("/videos", { duration })).sort();
@@ -74,7 +85,10 @@ describe("v2: search filters on GET /videos", () => {
         await createVideo(owner, { title: "lofi old", duration: 3000, createdAt: hoursAgo(24 * 10) });
         await createVideo(owner, { title: "jazz", duration: 3000, createdAt: hoursAgo(1) });
 
-        expect(await walk({ query: "lofi", duration: "long", uploaded: "week", limit: 2 })).toEqual([["lofi a", "lofi b"], ["lofi c"]]);
+        expect(await walk({ query: "lofi", duration: "long", uploaded: "week", limit: 2 })).toEqual([
+            ["lofi a", "lofi b"],
+            ["lofi c"],
+        ]);
     });
 
     it.each([

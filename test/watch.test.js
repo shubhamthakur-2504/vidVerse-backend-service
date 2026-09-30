@@ -33,8 +33,12 @@ describe("v2 watch payload", () => {
 
         const anonymous = await request(app).get(`/api/v2/videos/${video._id}`);
         expect(anonymous.body.data.viewer).toEqual({ reaction: null, isSubscribed: false, isOwner: false });
-        expect((await request(app).get(`/api/v2/videos/${video._id}`).set(authHeader(third))).body.data.viewer.reaction).toBe("dislike");
-        expect((await request(app).get(`/api/v2/videos/${video._id}`).set(authHeader(owner))).body.data.viewer.isOwner).toBe(true);
+        expect(
+            (await request(app).get(`/api/v2/videos/${video._id}`).set(authHeader(third))).body.data.viewer.reaction
+        ).toBe("dislike");
+        expect(
+            (await request(app).get(`/api/v2/videos/${video._id}`).set(authHeader(owner))).body.data.viewer.isOwner
+        ).toBe(true);
     });
 
     it("lets only the owner open an unpublished video, and nobody a processing one", async () => {
@@ -43,7 +47,13 @@ describe("v2 watch payload", () => {
         const processing = await createVideo(owner, { status: "processing" });
 
         expect((await request(app).get(`/api/v2/videos/${hidden._id}`)).status).toBe(404);
-        expect((await request(app).get(`/api/v2/videos/${hidden._id}`).set(authHeader(await createUser()))).status).toBe(404);
+        expect(
+            (
+                await request(app)
+                    .get(`/api/v2/videos/${hidden._id}`)
+                    .set(authHeader(await createUser()))
+            ).status
+        ).toBe(404);
         expect((await request(app).get(`/api/v2/videos/${hidden._id}`).set(authHeader(owner))).status).toBe(200);
         expect((await request(app).get(`/api/v2/videos/${processing._id}`).set(authHeader(owner))).status).toBe(404);
     });
@@ -54,7 +64,12 @@ describe("v2 comments with reaction counts", () => {
         const owner = await createUser();
         const [a, b] = [await createUser({ userName: "alpha" }), await createUser()];
         const video = await createVideo(owner);
-        const c1 = await Comment.create({ content: "one", videoId: video._id, userId: a._id, createdAt: new Date(Date.now() - 60_000) });
+        const c1 = await Comment.create({
+            content: "one",
+            videoId: video._id,
+            userId: a._id,
+            createdAt: new Date(Date.now() - 60_000),
+        });
         await Comment.create({ content: "two", videoId: video._id, userId: b._id });
         await like(a._id, c1._id, "Comment");
         await like(b._id, c1._id, "Comment", false);
@@ -62,7 +77,12 @@ describe("v2 comments with reaction counts", () => {
         const res = await request(app).get(`/api/v2/videos/${video._id}/comments`).set(authHeader(a));
         expect(res.status).toBe(200);
         const byContent = Object.fromEntries(res.body.data.items.map((c) => [c.content, c]));
-        expect(byContent.one).toMatchObject({ likeCount: 1, dislikeCount: 1, viewerReaction: "like", author: { userName: "alpha" } });
+        expect(byContent.one).toMatchObject({
+            likeCount: 1,
+            dislikeCount: 1,
+            viewerReaction: "like",
+            author: { userName: "alpha" },
+        });
         expect(byContent.two).toMatchObject({ likeCount: 0, dislikeCount: 0, viewerReaction: null });
         expect(res.body.data.items.map((c) => c.content)).toEqual(["two", "one"]); // newest first
 
@@ -83,7 +103,11 @@ describe("v2 related videos", () => {
 
         const res = await request(app).get(`/api/v2/videos/${current._id}/related?limit=3`);
         expect(res.status).toBe(200);
-        expect(res.body.data.map((v) => v._id)).toEqual([String(sameCategoryPopular._id), String(sameCreator._id), String(unrelated._id)]);
+        expect(res.body.data.map((v) => v._id)).toEqual([
+            String(sameCategoryPopular._id),
+            String(sameCreator._id),
+            String(unrelated._id),
+        ]);
         expect(res.body.data.every((v) => v._id !== String(current._id))).toBe(true);
         expect(res.body.data[0].owner.userName).toBe(other.userName);
     });

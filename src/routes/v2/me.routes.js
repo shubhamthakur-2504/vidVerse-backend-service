@@ -4,7 +4,13 @@ import { verifyJwtToken as auth } from "../../middleWares/auth.middleWare.js";
 import { authLimiter } from "../../middleWares/rateLimit.middleWare.js";
 import { validate } from "../../middleWares/validate.middleWare.js";
 import { updateAccountSchema, changePasswordSchema, paginationSchema } from "../../validators/index.js";
-import { getCurrentUser, updateAccountDetails, changeAvatar, changeCover, changeCurrentPassword } from "../../controllers/userRegister.controllers.js";
+import {
+    getCurrentUser,
+    updateAccountDetails,
+    changeAvatar,
+    changeCover,
+    changeCurrentPassword,
+} from "../../controllers/userRegister.controllers.js";
 import { getWatchHistory, getUserChannelDetails } from "../../controllers/userDetails.controllers.js";
 import { Mysubscriptions, getSubscriptionFeed } from "../../controllers/subscription.controllers.js";
 import { getMyVideos } from "../../controllers/video.controllers.js";
@@ -12,7 +18,11 @@ import { getStudioOverview, getMyVideo } from "../../controllers/studio.controll
 import { removeFromWatchHistory, clearWatchHistory } from "../../controllers/library.controllers.js";
 import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.js";
 import { subscriptionFeedSchema, listNotificationsSchema, markNotificationsReadSchema } from "../../validators/v2.js";
-import { listNotifications, getUnreadCount, markNotificationsRead } from "../../controllers/notification.controllers.js";
+import {
+    listNotifications,
+    getUnreadCount,
+    markNotificationsRead,
+} from "../../controllers/notification.controllers.js";
 
 // /api/v2/me: the signed-in user
 const router = Router();

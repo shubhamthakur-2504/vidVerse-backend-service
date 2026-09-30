@@ -18,11 +18,16 @@ const tokenFromMail = (to) => {
 };
 
 describe("v2: email verification", () => {
-    beforeEach(() => { outbox.length = 0; });
+    beforeEach(() => {
+        outbox.length = 0;
+    });
 
     it("emails a link at registration that verifies the address once", async () => {
         const reg = await api("post", "/auth/register")
-            .field("userName", "verifyme").field("email", "verify@example.com").field("fullName", "Verify Me").field("password", "password123")
+            .field("userName", "verifyme")
+            .field("email", "verify@example.com")
+            .field("fullName", "Verify Me")
+            .field("password", "password123")
             .attach("avatar", png, { filename: "a.png", contentType: "image/png" });
         expect(reg.status).toBe(201);
         expect(reg.body.data.emailVerifiedAt).toBeNull();
@@ -68,7 +73,9 @@ describe("v2: email verification", () => {
 });
 
 describe("v2: password reset", () => {
-    beforeEach(() => { outbox.length = 0; });
+    beforeEach(() => {
+        outbox.length = 0;
+    });
 
     it("answers the same for unknown emails and sends nothing", async () => {
         const res = await api("post", "/auth/forgot-password").send({ email: "nobody@example.com" });
@@ -92,11 +99,15 @@ describe("v2: password reset", () => {
         expect(reset.status).toBe(200);
 
         expect((await api("get", "/me").set("Cookie", oldAccess)).status).toBe(401);
-        expect((await api("post", "/auth/login").send({ identifier: "forgetful", password: "password123" })).status).toBe(401);
+        expect(
+            (await api("post", "/auth/login").send({ identifier: "forgetful", password: "password123" })).status
+        ).toBe(401);
         const after = await api("post", "/auth/login").send({ identifier: "forgetful", password: "brand-new-pass" });
         expect(after.status).toBe(200);
         // opening the reset link proved the address
-        expect((await api("get", "/me").set("Cookie", cookieOf(after, "accessToken"))).body.data.emailVerifiedAt).toBeTruthy();
+        expect(
+            (await api("get", "/me").set("Cookie", cookieOf(after, "accessToken"))).body.data.emailVerifiedAt
+        ).toBeTruthy();
 
         expect((await api("post", "/auth/reset-password").send({ token, password: "another-pass" })).status).toBe(400);
     });
@@ -105,6 +116,8 @@ describe("v2: password reset", () => {
         const user = await createUser({ email: "mixup@example.com" });
         await api("post", "/auth/email-verification").set(authHeader(user));
         const token = tokenFromMail("mixup@example.com");
-        expect((await api("post", "/auth/reset-password").send({ token, password: "brand-new-pass" })).status).toBe(400);
+        expect((await api("post", "/auth/reset-password").send({ token, password: "brand-new-pass" })).status).toBe(
+            400
+        );
     });
 });

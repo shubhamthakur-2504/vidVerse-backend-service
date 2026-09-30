@@ -14,11 +14,27 @@ import { reactionCountsLookup, viewerReactionLookup, countFrom, reactionOf } fro
 const OWNER_FIELDS = { _id: 1, userName: 1, fullName: 1, avatarUrl: 1 };
 
 const postStages = (viewerId) => [
-    { $lookup: { from: "users", localField: "owner", foreignField: "_id", pipeline: [{ $project: OWNER_FIELDS }], as: "owner" } },
+    {
+        $lookup: {
+            from: "users",
+            localField: "owner",
+            foreignField: "_id",
+            pipeline: [{ $project: OWNER_FIELDS }],
+            as: "owner",
+        },
+    },
     { $unwind: "$owner" },
     reactionCountsLookup("Tweet", "reactionCounts"),
     viewerReactionLookup("Tweet", viewerId, "viewerReaction"),
-    { $lookup: { from: "comments", localField: "_id", foreignField: "tweetId", pipeline: [{ $count: "n" }], as: "comments" } },
+    {
+        $lookup: {
+            from: "comments",
+            localField: "_id",
+            foreignField: "tweetId",
+            pipeline: [{ $count: "n" }],
+            as: "comments",
+        },
+    },
     getCreatedAtDiffField(),
 ];
 
@@ -67,7 +83,11 @@ const getPostFeed = asyncHandler(async (req, res) => {
 const getChannelPosts = asyncHandler(async (req, res) => {
     const channel = await User.findOne({ userName: req.params.userName.toLowerCase() }).select("_id").lean();
     if (!channel) throw new apiError(404, "Channel not found");
-    return res.status(200).json(new apiResponse(200, await pageOfPosts({ owner: channel._id }, req), "Channel posts fetched successfully"));
+    return res
+        .status(200)
+        .json(
+            new apiResponse(200, await pageOfPosts({ owner: channel._id }, req), "Channel posts fetched successfully")
+        );
 });
 
 // GET /v2/posts/:id

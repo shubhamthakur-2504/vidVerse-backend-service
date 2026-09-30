@@ -7,7 +7,13 @@ import { withType } from "../../middleWares/type.middleWare.js";
 import { updatePlaylistSchema } from "../../validators/index.js";
 import { createPlaylistV2Schema, myPlaylistsSchema } from "../../validators/v2.js";
 import { playlistVideoFromBody, playlistVideoFromParams } from "./adapters.js";
-import { createPlayList, updatePlayList, deletePlayList, addVideoToPlayList, removeVideoFromPlayList } from "../../controllers/playList.controllers.js";
+import {
+    createPlayList,
+    updatePlayList,
+    deletePlayList,
+    addVideoToPlayList,
+    removeVideoFromPlayList,
+} from "../../controllers/playList.controllers.js";
 import { getMyPlaylists, getPlaylistWithVideos } from "../../controllers/library.controllers.js";
 
 // /api/v2/playlists: a public playlist page, and the signed-in user's playlists

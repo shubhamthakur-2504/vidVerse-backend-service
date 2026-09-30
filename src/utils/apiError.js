@@ -1,21 +1,16 @@
 import { config } from "../config.js";
 
 class apiError extends Error {
-    constructor(
-        statusCode,
-        message = "something went wrong",
-        errors = [],
-        stack = ""
-    ) {
-        super(message)
-        this.statusCode = statusCode
-        this.errors = errors
-        this.success = false
-        this.data = null
+    constructor(statusCode, message = "something went wrong", errors = [], stack = "") {
+        super(message);
+        this.statusCode = statusCode;
+        this.errors = errors;
+        this.success = false;
+        this.data = null;
         if (stack) {
-            this.stack = stack
-        }else{
-            Error.captureStackTrace(this, this.constructor)
+            this.stack = stack;
+        } else {
+            Error.captureStackTrace(this, this.constructor);
         }
     }
     toJSON() {
@@ -24,10 +19,9 @@ class apiError extends Error {
             statusCode: this.statusCode,
             message: this.message,
             errors: this.errors,
-            stack: config.isDevelopment ? this.stack : undefined 
+            stack: config.isDevelopment ? this.stack : undefined,
         };
     }
-
 }
 
-export {apiError}
+export { apiError };

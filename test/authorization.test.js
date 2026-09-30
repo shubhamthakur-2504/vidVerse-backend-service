@@ -20,7 +20,12 @@ describe("ownership checks", () => {
         video = await createVideo(owner);
         tweet = await Tweet.create({ content: "hello", owner: owner._id });
         comment = await Comment.create({ content: "nice", videoId: video._id, userId: owner._id });
-        playlist = await PlayList.create({ title: "mine", thumbnailUrl: video.thumbnailUrl, videos: [video._id], ownerId: owner._id });
+        playlist = await PlayList.create({
+            title: "mine",
+            thumbnailUrl: video.thumbnailUrl,
+            videos: [video._id],
+            ownerId: owner._id,
+        });
     });
 
     const cases = () => [
@@ -32,9 +37,19 @@ describe("ownership checks", () => {
         ["update a video", "patch", `/api/v1/videos/update/${video._id}`, { title: "hacked" }],
         ["toggle a video's visibility", "patch", `/api/v1/videos/toggle/${video._id}`],
         ["delete a video", "delete", `/api/v1/videos/delete/${video._id}`],
-        ["update a playlist", "patch", `/api/v1/videos/userplaylist/updateplaylist/${playlist._id}`, { title: "hacked" }],
+        [
+            "update a playlist",
+            "patch",
+            `/api/v1/videos/userplaylist/updateplaylist/${playlist._id}`,
+            { title: "hacked" },
+        ],
         ["delete a playlist", "delete", `/api/v1/videos/userplaylist/deleteplaylist/${playlist._id}`],
-        ["add a video to a playlist", "post", "/api/v1/videos/userplaylist/addvideotoplaylist", { playListId: String(playlist._id), videoId: String(video._id) }],
+        [
+            "add a video to a playlist",
+            "post",
+            "/api/v1/videos/userplaylist/addvideotoplaylist",
+            { playListId: String(playlist._id), videoId: String(video._id) },
+        ],
     ];
 
     it("returns 403 for every mutation by a non-owner", async () => {
@@ -61,11 +76,16 @@ describe("ownership checks", () => {
     });
 
     it("lets the owner edit their tweet and the video owner remove comments on their video", async () => {
-        const edit = await request(app).patch(`/api/v1/tweets/updatetweet/${tweet._id}`).set(authHeader(owner)).send({ content: "edited" });
+        const edit = await request(app)
+            .patch(`/api/v1/tweets/updatetweet/${tweet._id}`)
+            .set(authHeader(owner))
+            .send({ content: "edited" });
         expect(edit.status).toBe(200);
 
         const strangerComment = await Comment.create({ content: "spam", videoId: video._id, userId: stranger._id });
-        const removed = await request(app).delete(`/api/v1/videos/creatercommentdelete/${strangerComment._id}`).set(authHeader(owner));
+        const removed = await request(app)
+            .delete(`/api/v1/videos/creatercommentdelete/${strangerComment._id}`)
+            .set(authHeader(owner));
         expect(removed.status).toBe(200);
         expect(await Comment.findById(strangerComment._id)).toBeNull();
     });

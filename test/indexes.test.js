@@ -25,6 +25,7 @@ describe("indexes serve the hot queries", () => {
         ["feed", () => Video.find({ status: "ready", isPublished: true }).sort({ createdAt: -1, _id: -1 }).limit(24)],
         ["feed by category", () => Video.find({ category: "Music", status: "ready", isPublished: true }).sort({ createdAt: -1, _id: -1 }).limit(24)],
         ["my videos", () => Video.find({ owner: id }).sort({ createdAt: -1 })],
+        ["search by views", () => Video.find({ status: "ready", isPublished: true }).sort({ views: -1, _id: -1 }).limit(24)],
         ["subscriptions feed", () => Video.find({ owner: { $in: [id, new mongoose.Types.ObjectId()] }, status: "ready", isPublished: true }).sort({ createdAt: -1, _id: -1 }).limit(24)],
         ["video comments", () => Comment.find({ videoId: id }).sort({ createdAt: -1, _id: -1 }).limit(20)],
         ["tweet feed", () => Tweet.find({}).sort({ createdAt: -1, _id: -1 }).limit(20)],
@@ -35,6 +36,16 @@ describe("indexes serve the hot queries", () => {
     ])("%s uses an index", async (_label, query) => {
         const plan = await query().explain("queryPlanner");
         expect(scanStage(plan)).toBe("IXSCAN");
+    });
+
+    // stages anywhere in the winning plan: a SORT stage means the results were sorted in memory
+    const stagesOf = (node) => (node ? [node.stage, ...stagesOf(node.inputStage ?? node.queryPlan), ...(node.inputStages ?? []).flatMap(stagesOf)] : []);
+    it.each([
+        ["feed", () => Video.find({ status: "ready", isPublished: true }).sort({ createdAt: -1, _id: -1 }).limit(24)],
+        ["search by views", () => Video.find({ status: "ready", isPublished: true }).sort({ views: -1, _id: -1 }).limit(24)],
+    ])("%s is sorted by the index, not in memory", async (_label, query) => {
+        const plan = await query().explain("queryPlanner");
+        expect(stagesOf(plan.queryPlanner.winningPlan)).not.toContain("SORT");
     });
 
     it("control: an unindexed query is reported as a collection scan", async () => {

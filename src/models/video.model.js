@@ -57,6 +57,8 @@ videoSchema.index({ sourcePublicId: 1 }, { unique: true, sparse: true })
 // public feed (newest first, optionally per category) and "my videos"; createdAt + _id is the pagination cursor
 videoSchema.index({ status: 1, isPublished: 1, createdAt: -1, _id: -1 })
 videoSchema.index({ category: 1, status: 1, isPublished: 1, createdAt: -1, _id: -1 })
+// search sorted by views (cursor: views + _id)
+videoSchema.index({ status: 1, isPublished: 1, views: -1, _id: -1 })
 videoSchema.index({ owner: 1, createdAt: -1 })
 // a channel's public videos and the subscriptions feed (owner $in [...]: one merged index scan per channel)
 videoSchema.index({ owner: 1, status: 1, isPublished: 1, createdAt: -1, _id: -1 })

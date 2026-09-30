@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { objectId, text, optionalText, optionalLongText, booleanLike, pageQuery, category } from "./common.js";
+import { objectId, text, optionalText, optionalLongText, booleanLike, pageQuery, category, userName } from "./common.js";
 import { updateVideoSchema, listVideosSchema } from "./index.js";
 
 // GET /videos: the feed and search results, with the search filters
@@ -10,6 +10,9 @@ export const listVideosV2Schema = {
         duration: z.enum(["short", "medium", "long"], { error: "duration must be short, medium or long" }).optional(),
     }),
 };
+
+// GET /auth/username-availability?userName=: the live check on the register form
+export const userNameAvailabilitySchema = { query: z.object({ userName }) };
 
 // PUT /reactions/:targetType/:id
 export const setReactionSchema = {

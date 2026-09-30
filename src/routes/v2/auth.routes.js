@@ -5,7 +5,8 @@ import { authLimiter } from "../../middleWares/rateLimit.middleWare.js";
 import { validate } from "../../middleWares/validate.middleWare.js";
 import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.js";
 import { registerSchema, loginSchema } from "../../validators/index.js";
-import { registerUser, login, logout, refreshAccessToken } from "../../controllers/userRegister.controllers.js";
+import { userNameAvailabilitySchema } from "../../validators/v2.js";
+import { registerUser, login, logout, refreshAccessToken, checkUserNameAvailability } from "../../controllers/userRegister.controllers.js";
 import { listSessions, revokeSessionById, revokeOtherSessionsForUser } from "../../controllers/session.controllers.js";
 
 // /api/v2/auth
@@ -15,6 +16,8 @@ router.param("sessionId", validateObjectIdParam);
 router.post("/register", authLimiter, upload.fields([{ name: "avatar", maxCount: 1 }, { name: "cover", maxCount: 1 }]), validate(registerSchema), registerUser);
 router.post("/login", authLimiter, validate(loginSchema), login);
 router.post("/refresh", refreshAccessToken);
+// public and read-only; covered by the general rate limit (the register form checks as the user types)
+router.get("/username-availability", validate(userNameAvailabilitySchema), checkUserNameAvailability);
 router.post("/logout", auth, logout);
 
 // devices signed in to this account

@@ -50,6 +50,15 @@ describe("auth flow", () => {
         expect(cloudinaryMock.uploadOnCloudinary).toHaveBeenCalledTimes(1);
     });
 
+    it("reports whether a username is free, case-insensitively", async () => {
+        await createUser({ userName: "taken.name" });
+        const check = (name) => request(app).get("/api/v2/auth/username-availability").query({ userName: name });
+        expect((await check("Taken.Name")).body.data).toEqual({ userName: "taken.name", available: false });
+        expect((await check("free_name")).body.data).toEqual({ userName: "free_name", available: true });
+        expect((await check("no spaces")).status).toBe(400);
+        expect((await check("ab")).status).toBe(400);
+    });
+
     it("rejects an invalid email with 400, not 410 (M4)", async () => {
         const res = await request(app).post("/api/v2/auth/register")
             .field("userName", "bademail").field("email", "not-an-email").field("fullName", "Bad").field("password", "password123")

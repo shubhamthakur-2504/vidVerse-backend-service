@@ -72,6 +72,13 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 })
 
+// v2: GET /auth/username-availability?userName= (the format is already checked and lowercased by the validator)
+const checkUserNameAvailability = asyncHandler(async (req, res) => {
+    const { userName } = req.query
+    const taken = await User.exists({ userName })
+    return res.status(200).json(new apiResponse(200, { userName, available: !taken }, taken ? "Username is taken" : "Username is available"))
+})
+
 // login
 const login = asyncHandler(async (req, res) => {
 
@@ -254,4 +261,4 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200, req.user, "Current User Details"))
 })
 
-export { registerUser, login, refreshAccessToken, logout, changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails, getCurrentUser }
+export { registerUser, login, refreshAccessToken, logout, changeCurrentPassword, changeAvatar, changeCover, updateAccountDetails, getCurrentUser, checkUserNameAvailability }

@@ -39,7 +39,9 @@ describe("ownership checks", () => {
 
     it("returns 403 for every mutation by a non-owner", async () => {
         for (const [label, method, url, body] of cases()) {
-            const res = await request(app)[method](url).set(authHeader(stranger)).send(body ?? {});
+            // the dynamic method call gets its own line: prettier would otherwise start a line with [method]
+            const call = request(app)[method](url);
+            const res = await call.set(authHeader(stranger)).send(body ?? {});
             expect(res.status, label).toBe(403);
         }
         // nothing changed
@@ -52,7 +54,8 @@ describe("ownership checks", () => {
 
     it("returns 401 for every mutation without a token", async () => {
         for (const [label, method, url, body] of cases()) {
-            const res = await request(app)[method](url).send(body ?? {});
+            const call = request(app)[method](url);
+            const res = await call.send(body ?? {});
             expect(res.status, label).toBe(401);
         }
     });

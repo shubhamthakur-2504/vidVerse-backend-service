@@ -6,7 +6,8 @@ import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.j
 import { withType } from "../../middleWares/type.middleWare.js";
 import { createView as view } from "../../middleWares/view.middleWare.js";
 import { tweetSchema, listTweetsSchema, commentSchema, listCommentsSchema } from "../../validators/index.js";
-import { getAllTweets, createTweet, getTweetDetails, updateTweet, deleteTweet } from "../../controllers/tweet.controllers.js";
+import { createTweet, updateTweet, deleteTweet } from "../../controllers/tweet.controllers.js";
+import { getPostFeed, getPost } from "../../controllers/post.controllers.js";
 import { listCommentsWithStats, createComment } from "../../controllers/comment.controllers.js";
 
 // /api/v2/posts: community posts (stored as tweets)
@@ -14,9 +15,9 @@ const router = Router();
 router.param("id", validateObjectIdParam);
 router.use(withType("tweet"));
 
-router.get("/", validate(listTweetsSchema), getAllTweets);
+router.get("/", lightauth, validate(listTweetsSchema), getPostFeed);
 router.post("/", auth, upload.single("image"), validate(tweetSchema), createTweet);
-router.get("/:id", lightauth, view, getTweetDetails);
+router.get("/:id", lightauth, view, getPost);
 router.patch("/:id", auth, validate(tweetSchema), updateTweet);
 router.delete("/:id", auth, deleteTweet);
 

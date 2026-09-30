@@ -4,7 +4,9 @@ import { validate } from "../../middleWares/validate.middleWare.js";
 import { validateObjectIdParam } from "../../middleWares/validateId.middleWare.js";
 import { apiError } from "../../utils/apiError.js";
 import { channelVideosSchema } from "../../validators/v2.js";
+import { listTweetsSchema } from "../../validators/index.js";
 import { getChannel, getChannelVideos, getChannelPlaylists } from "../../controllers/channel.controllers.js";
+import { getChannelPosts } from "../../controllers/post.controllers.js";
 import { putSubscription, unsubscribe } from "../../controllers/subscription.controllers.js";
 
 // /api/v2/channels: public channel pages (by user name) and subscriptions (by channel id)
@@ -19,5 +21,6 @@ router.delete("/:id/subscription", auth, unsubscribe);
 router.get("/:userName", lightauth, getChannel);
 router.get("/:userName/videos", validate(channelVideosSchema), getChannelVideos);
 router.get("/:userName/playlists", getChannelPlaylists);
+router.get("/:userName/posts", lightauth, validate(listTweetsSchema), getChannelPosts);
 
 export default router;

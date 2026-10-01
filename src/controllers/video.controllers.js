@@ -273,6 +273,8 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 owner: {
                     _id: 1,
                     userName: 1,
+                    // the card shows the channel's display name, as every other list does
+                    fullName: 1,
                     avatarUrl: 1,
                 },
             },

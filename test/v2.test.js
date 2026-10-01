@@ -127,6 +127,13 @@ describe("v2: videos, comments and reactions", () => {
         const owner = await createUser();
         const video = await createVideo(owner);
 
+        // the feed card names the channel, so the list carries the owner's display name
+        const listed = (await api("get", "/videos")).body.data.items[0];
+        expect(listed.owner).toMatchObject({
+            userName: owner.userName,
+            fullName: owner.fullName,
+        });
+
         const hide = await api("patch", `/videos/${video._id}`).set(authHeader(owner)).send({ isPublished: false });
         expect(hide.status).toBe(200);
         expect(hide.body.data.isPublished).toBe(false);
